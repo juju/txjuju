@@ -5,16 +5,16 @@ from json import loads, dumps
 from twisted.trial.unittest import TestCase
 from twisted.internet.error import ConnectionDone
 
-from txjuju.protocol import JujuAPIClientProtocol
-from txjuju.errors import RequestError, RetriableError
+from txjuju.protocol import APIClientProtocol
+from txjuju.errors import APIRequestError, APIRetriableError
 
 
-class JujuAPIClientProtocolTest(TestCase):
+class APIClientProtocolTest(TestCase):
 
     def setUp(self):
-        super(JujuAPIClientProtocolTest, self).setUp()
+        super(APIClientProtocolTest, self).setUp()
         self.messages = []
-        self.protocol = JujuAPIClientProtocol()
+        self.protocol = APIClientProtocol()
 
         class Transport(object):
             write = self.messages.append
@@ -103,7 +103,7 @@ class JujuAPIClientProtocolTest(TestCase):
     def test_dataReceivedWithError(self):
         """
         A response reports an error using the "Error" and "ErrorCode" keys,
-        which are saved in the generated RequestError.
+        which are saved in the generated APIRequestError.
         """
         deferred = self.protocol.sendRequest("Admin", "Login")
         response = {
@@ -112,7 +112,7 @@ class JujuAPIClientProtocolTest(TestCase):
             "ErrorCode": "some code"}
         self.protocol.dataReceived(dumps(response))
         failure = self.failureResultOf(deferred)
-        failure.trap(RequestError)
+        failure.trap(APIRequestError)
         error = failure.value
         self.assertEqual("juju failed (code: 'some code')", error.message)
         self.assertEqual("some code", error.code)
@@ -129,7 +129,7 @@ class JujuAPIClientProtocolTest(TestCase):
             "ErrorCode": "upgrade in progress"}
         self.protocol.dataReceived(dumps(response))
         failure = self.failureResultOf(deferred)
-        failure.trap(RetriableError)
+        failure.trap(APIRetriableError)
         self.assertEqual("upgrade in progress", failure.value.code)
 
     def test_dataReceivedNoErrorCode(self):
@@ -143,7 +143,7 @@ class JujuAPIClientProtocolTest(TestCase):
             "Error": "upgrade in progress - Juju functionality is limited"}
         self.protocol.dataReceived(dumps(response))
         failure = self.failureResultOf(deferred)
-        failure.trap(RequestError)
+        failure.trap(APIRequestError)
         self.assertEqual("", failure.value.code)
 
     def test_connectionLost(self):

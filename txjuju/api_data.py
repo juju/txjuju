@@ -11,7 +11,7 @@ class APIInfo(object):
         self.uuid = uuid
 
 
-class JujuModelInfo(object):
+class ModelInfo(object):
     """State information about the model.
 
     See https://godoc.org/github.com/juju/juju/apiserver/params#ModelInfo.
@@ -35,7 +35,7 @@ class JujuModelInfo(object):
         self.cloudCredential = cloudCredential
 
 
-class JujuCloudInfo(object):
+class CloudInfo(object):
     """State information about a single cloud.
 
     See https://godoc.org/github.com/juju/juju/apiserver/params#Cloud.
@@ -73,7 +73,7 @@ class MachineInfo(object):
         return bool(stateServerJobs.intersection(set(self.jobs)))
 
 
-class JujuApplicationInfo(object):
+class ApplicationInfo(object):
     """State information about a single application."""
 
     def __init__(self, name, exposed=False, charmURL=None, life=None,
@@ -139,7 +139,7 @@ class WatcherDelta(object):
         self.info = info
 
 
-class JujuApplicationConfig(object):
+class ApplicationConfig(object):
     """Describes the configuration of a particular application.
 
     @ivar application: The name of the application this config is for.

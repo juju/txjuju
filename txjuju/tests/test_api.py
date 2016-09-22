@@ -6,27 +6,27 @@ import yaml
 from twisted.trial.unittest import TestCase
 from twisted.test.proto_helpers import MemoryReactorClock
 
-from txjuju.protocol import JujuAPIClientFactory
+from txjuju.protocol import APIClientFactory
 from txjuju.api import (
-    JujuEndpoint, Juju1APIClient, Juju2APIClient, MACHINE_SCOPE)
+    Endpoint, Juju1APIClient, Juju2APIClient, MACHINE_SCOPE)
 from txjuju.errors import (
-    RequestError, InvalidEndpointAddress, AllWatcherStoppedError)
-from txjuju.testing import FakeJujuBackend
+    APIRequestError, InvalidAPIEndpointAddress, AllWatcherStoppedError)
+from txjuju.testing import FakeAPIBackend
 
 
-class JujuEndpointTest(TestCase):
+class EndpointTest(TestCase):
 
     def setUp(self):
-        super(JujuEndpointTest, self).setUp()
+        super(EndpointTest, self).setUp()
         self.reactor = MemoryReactorClock()
-        self.endpoint = JujuEndpoint(self.reactor, "host", Juju1APIClient)
+        self.endpoint = Endpoint(self.reactor, "host", Juju1APIClient)
 
     def test_connect(self):
         """
         The connect method uses the endpoint information provided in
         the constructor.
         """
-        factory = JujuAPIClientFactory()
+        factory = APIClientFactory()
         self.endpoint.factoryClass = lambda: factory
         self.endpoint.connect()
         [(host, port, _, _, _, _)] = self.reactor.sslClients
@@ -35,8 +35,8 @@ class JujuEndpointTest(TestCase):
 
     def test_connect_non_default_port(self):
         """It's possible to specify a different port in the endpoint."""
-        self.endpoint = JujuEndpoint(self.reactor, "host:1234", Juju1APIClient)
-        factory = JujuAPIClientFactory()
+        self.endpoint = Endpoint(self.reactor, "host:1234", Juju1APIClient)
+        factory = APIClientFactory()
         self.endpoint.factoryClass = lambda: factory
         self.endpoint.connect()
         [(host, port, _, _, _, _)] = self.reactor.sslClients
@@ -56,7 +56,7 @@ class JujuEndpointTest(TestCase):
 
     def test_wb_get_uri_juju2(self):
         """The _get_uri method returns the Juju 2.0 model endpoint URI."""
-        endpoint = JujuEndpoint(
+        endpoint = Endpoint(
             self.reactor, "host", clientClass=Juju2APIClient, uuid="uuid-123")
         self.assertEqual(
             "wss://1.2.3.4:17070/model/uuid-123/api",
@@ -77,15 +77,15 @@ class JujuEndpointTest(TestCase):
         invalid.
         """
         self.assertRaises(
-            InvalidEndpointAddress, self.endpoint._get_uri,
+            InvalidAPIEndpointAddress, self.endpoint._get_uri,
             "http://www.example.com/")
         self.assertRaises(
-            InvalidEndpointAddress, self.endpoint._get_uri, "1.2.3.4:badport")
+            InvalidAPIEndpointAddress, self.endpoint._get_uri, "1.2.3.4:badport")
         self.assertRaises(
-            InvalidEndpointAddress, self.endpoint._get_uri,
+            InvalidAPIEndpointAddress, self.endpoint._get_uri,
             "www.example.com/foo")
         self.assertRaises(
-            InvalidEndpointAddress, self.endpoint._get_uri,
+            InvalidAPIEndpointAddress, self.endpoint._get_uri,
             "/www.example.com")
 
 
@@ -93,7 +93,7 @@ class Juju1APIClientTest(TestCase):
 
     def setUp(self):
         super(Juju1APIClientTest, self).setUp()
-        self.backend = FakeJujuBackend()
+        self.backend = FakeAPIBackend()
         self.client = Juju1APIClient(self.backend.protocol)
 
     def test_login(self):
@@ -147,7 +147,7 @@ class Juju1APIClientTest(TestCase):
 
     def test_modelInfo_bad_result(self):
         """
-        _parseModelInfo() fails with a RequestError if the result is
+        _parseModelInfo() fails with a APIRequestError if the result is
         not correctly formed.
         """
         uuid = u"a0c03f34-ea02-11e2-8e96-875122dd4b52"
@@ -155,7 +155,7 @@ class Juju1APIClientTest(TestCase):
         self.backend.response({})
 
         err = self.failureResultOf(deferred)
-        self.assertIsInstance(err.value, RequestError)
+        self.assertIsInstance(err.value, APIRequestError)
         self.assertEqual("malformed result {}", err.value.error)
         self.assertEqual("", err.value.code)
 
@@ -380,7 +380,7 @@ class Juju1APIClientTest(TestCase):
         If the allWatcher is stopped an AllWatcherStoppedError is raised.
         """
         deferred = self.client.allWatcherNext("1")
-        self.backend.error(RequestError("watcher was stopped", ""))
+        self.backend.error(APIRequestError("watcher was stopped", ""))
         failure = self.failureResultOf(deferred)
         self.assertIsInstance(failure.value, AllWatcherStoppedError)
 
@@ -389,9 +389,9 @@ class Juju1APIClientTest(TestCase):
         If allWatcherNext receives a different error it is re-raised.
         """
         deferred = self.client.allWatcherNext("1")
-        self.backend.error(RequestError("Quis custodiet ipsos custodes?", ""))
+        self.backend.error(APIRequestError("Quis custodiet ipsos custodes?", ""))
         failure = self.failureResultOf(deferred)
-        self.assertIsInstance(failure.value, RequestError)
+        self.assertIsInstance(failure.value, APIRequestError)
 
     def test_setAnnotations(self):
         """
@@ -761,7 +761,7 @@ class Juju1APIClientTest(TestCase):
             parameters, self.backend.lastParams["Actions"][0]["Parameters"])
 
     def test_enqueueAction_failure(self):
-        """If the action fails, a RequestError is raised."""
+        """If the action fails, a APIRequestError is raised."""
         parameters = {"param1": "foo", "param2": "bar"}
         deferred = self.client.enqueueAction(
             "do-stuff", "service/2", parameters=parameters)
@@ -771,7 +771,7 @@ class Juju1APIClientTest(TestCase):
                     "Message": "Boom!",
                     "Code": "boom"}}]})
         failure = self.failureResultOf(deferred)
-        self.assertIsInstance(failure.value, RequestError)
+        self.assertIsInstance(failure.value, APIRequestError)
         self.assertEqual("Boom!", failure.value.error)
         self.assertEqual("boom", failure.value.code)
 
@@ -781,7 +781,7 @@ class Juju2APIClientTest(TestCase):
 
     def setUp(self):
         super(Juju2APIClientTest, self).setUp()
-        self.backend = FakeJujuBackend()
+        self.backend = FakeAPIBackend()
         self.client = Juju2APIClient(self.backend.protocol)
 
     def test_login(self):
@@ -862,7 +862,7 @@ class Juju2APIClientTest(TestCase):
 
     def test_modelInfo_bad_response(self):
         """
-        _parseModelInfo() fails with a RequestError if the response is
+        _parseModelInfo() fails with a APIRequestError if the response is
         not correctly formed.
         """
         uuid = u"a0c03f34-ea02-11e2-8e96-875122dd4b52"
@@ -870,13 +870,13 @@ class Juju2APIClientTest(TestCase):
         self.backend.response({"spam": []})
 
         err = self.failureResultOf(deferred)
-        self.assertIsInstance(err.value, RequestError)
+        self.assertIsInstance(err.value, APIRequestError)
         self.assertEqual("malformed response {u'spam': []}", err.value.error)
         self.assertEqual("", err.value.code)
 
     def test_modelInfo_no_results(self):
         """
-        _parseModelInfo() fails with a RequestError if there aren't any
+        _parseModelInfo() fails with a APIRequestError if there aren't any
         results.
         """
         uuid = u"a0c03f34-ea02-11e2-8e96-875122dd4b52"
@@ -884,13 +884,13 @@ class Juju2APIClientTest(TestCase):
         self.backend.response({"results": []})
 
         err = self.failureResultOf(deferred)
-        self.assertIsInstance(err.value, RequestError)
+        self.assertIsInstance(err.value, APIRequestError)
         self.assertEqual("expected 1 result, got none", err.value.error)
         self.assertEqual("", err.value.code)
 
     def test_modelInfo_multiple_results(self):
         """
-        _parseModelInfo() fails with a RequestError if there is more
+        _parseModelInfo() fails with a APIRequestError if there is more
         than one result.
         """
         uuid = u"a0c03f34-ea02-11e2-8e96-875122dd4b52"
@@ -898,13 +898,13 @@ class Juju2APIClientTest(TestCase):
         self.backend.response({"results": [{}, {}]})
 
         err = self.failureResultOf(deferred)
-        self.assertIsInstance(err.value, RequestError)
+        self.assertIsInstance(err.value, APIRequestError)
         self.assertEqual("expected 1 result, got 2", err.value.error)
         self.assertEqual("", err.value.code)
 
     def test_modelInfo_error_result(self):
         """
-        _parseModelInfo() fails with a RequestError if the result has
+        _parseModelInfo() fails with a APIRequestError if the result has
         an error set.
         """
         uuid = u"a0c03f34-ea02-11e2-8e96-875122dd4b52"
@@ -915,13 +915,13 @@ class Juju2APIClientTest(TestCase):
             }}]})
 
         err = self.failureResultOf(deferred)
-        self.assertIsInstance(err.value, RequestError)
+        self.assertIsInstance(err.value, APIRequestError)
         self.assertEqual("model {} not found".format(uuid), err.value.error)
         self.assertEqual("not found", err.value.code)
 
     def test_modelInfo_bad_result(self):
         """
-        _parseModelInfo() fails with a RequestError if the result is
+        _parseModelInfo() fails with a APIRequestError if the result is
         not correctly formed.
         """
         uuid = u"a0c03f34-ea02-11e2-8e96-875122dd4b52"
@@ -929,7 +929,7 @@ class Juju2APIClientTest(TestCase):
         self.backend.response({"results": [{"result": {}}]})
 
         err = self.failureResultOf(deferred)
-        self.assertIsInstance(err.value, RequestError)
+        self.assertIsInstance(err.value, APIRequestError)
         self.assertEqual("malformed result {}", err.value.error)
         self.assertEqual("", err.value.code)
 
@@ -1007,7 +1007,7 @@ class Juju2APIClientTest(TestCase):
         self.assertItemsEqual(["1", "2"], result)
 
     def test_runOnAllMachines_failure(self):
-        """If the RunOnAllMachines fails, a RequestError is raised."""
+        """If the RunOnAllMachines fails, a APIRequestError is raised."""
         deferred = self.client.runOnAllMachines(
             commands="ls /home", timeout=timedelta(seconds=10))
         self.backend.response(
@@ -1016,7 +1016,7 @@ class Juju2APIClientTest(TestCase):
                     "message": "Boom!",
                     "code": "boom"}}]})
         failure = self.failureResultOf(deferred)
-        self.assertIsInstance(failure.value, RequestError)
+        self.assertIsInstance(failure.value, APIRequestError)
         self.assertEqual("Boom!", failure.value.error)
         self.assertEqual("boom", failure.value.code)
 
@@ -1255,13 +1255,13 @@ class Juju2APIClientTest(TestCase):
 
     def test_addCharm_with_error(self):
         """
-        The addCharm method raises a RequestError when the API response
+        The addCharm method raises a APIRequestError when the API response
         contains an error.
         """
         deferred = self.client.addCharm("cs:trusty/absent-charm")
         self.backend.response({"Error": "Boom!"})
         failure = self.failureResultOf(deferred)
-        self.assertIsInstance(failure.value, RequestError)
+        self.assertIsInstance(failure.value, APIRequestError)
         self.assertEqual("Boom!", failure.value.error)
         self.assertEqual("", failure.value.code)
 

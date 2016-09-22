@@ -13,23 +13,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 from twisted.internet.protocol import ProcessProtocol
 from twisted.python import log
 
-
-class JujuCLIError(Exception):
-    """Raised when juju fails."""
-
-    def __init__(self, out, err, code=None, signal=None):
-        self.out = out
-        self.err = err
-        self.code = code
-        self.signal = signal
-
-        if code is not None:
-            reason = "exit code %d" % code
-        if signal is not None:
-            reason = "signal %d" % signal
-
-        super(JujuCLIError, self).__init__(
-            "juju ended with %s (out='%s', err='%s')" % (reason, out, err))
+from .errors import CLIError
 
 
 class Juju1CLI(object):
@@ -131,12 +115,12 @@ class Juju1CLI(object):
     def _handle_success(self, result):
         """Check that the process terminated with no error.
 
-        In case of error a L{JujuCLIError} exception will be
+        In case of error a CLIError exception will be
         raised with the details of the process run.
         """
         out, err, code = result
         if code != 0:
-            error = JujuCLIError(out, err, code=code)
+            error = CLIError(out, err, code=code)
             log.err(error)
             raise error
         return out, err
@@ -144,7 +128,7 @@ class Juju1CLI(object):
     def _handle_failure(self, failure):
         """Handle process termination because of a a signal."""
         out, err, signal = failure.value
-        error = JujuCLIError(out, err, signal=signal)
+        error = CLIError(out, err, signal=signal)
         log.err(error)
         raise error
 
@@ -270,12 +254,12 @@ class Juju2CLI(object):
     def _handle_success(self, result):
         """Check that the process terminated with no error.
 
-        In case of error a L{JujuCLIError} exception will be
+        In case of error a CLIError exception will be
         raised with the details of the process run.
         """
         out, err, code = result
         if code != 0:
-            error = JujuCLIError(out, err, code=code)
+            error = CLIError(out, err, code=code)
             log.err(error)
             raise error
         return out, err
@@ -283,7 +267,7 @@ class Juju2CLI(object):
     def _handle_failure(self, failure):
         """Handle process termination because of a a signal."""
         out, err, signal = failure.value
-        error = JujuCLIError(out, err, signal=signal)
+        error = CLIError(out, err, signal=signal)
         log.err(error)
         raise error
 

@@ -7,24 +7,24 @@ from twisted.trial.unittest import TestCase
 from twisted.internet.defer import inlineCallbacks
 
 from txjuju.testing import FakeJujuFixture
-from txjuju.errors import AuthError, RequestError
-from txjuju.api import JujuEndpoint, Juju1APIClient
+from txjuju.errors import APIAuthError, APIRequestError
+from txjuju.api import Endpoint, Juju1APIClient
 
 
-class JujuClientIntegrationTest(TestCase, TestWithFixtures):
+class Juju1APIClientIntegrationTest(TestCase, TestWithFixtures):
 
     @inlineCallbacks
     def setUp(self):
-        super(JujuClientIntegrationTest, self).setUp()
+        super(Juju1APIClientIntegrationTest, self).setUp()
         self.juju = self.useFixture(FakeJujuFixture())
-        self.endpoint = JujuEndpoint(
+        self.endpoint = Endpoint(
             reactor, str(self.juju.address), Juju1APIClient)
         self.client = yield self.endpoint.connect()
 
     @inlineCallbacks
     def tearDown(self):
         yield self.client.close()
-        super(JujuClientIntegrationTest, self).tearDown()
+        super(Juju1APIClientIntegrationTest, self).tearDown()
 
     @inlineCallbacks
     def test_api_info(self):
@@ -42,7 +42,7 @@ class JujuClientIntegrationTest(TestCase, TestWithFixtures):
         """
         try:
             yield self.client.login("user-admin", "wrong-password")
-        except AuthError, error:
+        except APIAuthError as error:
             self.assertEqual(
                 "invalid entity name or password "
                 "(code: 'unauthorized access')", str(error))
@@ -52,7 +52,7 @@ class JujuClientIntegrationTest(TestCase, TestWithFixtures):
     @inlineCallbacks
     def test_model_info(self):
         """
-        The modelInfo method returns an JujuModelInfo object with
+        The modelInfo method returns an ModelInfo object with
         information about the model.
         """
         yield self.client.login("user-admin", "test")
@@ -237,7 +237,7 @@ class JujuClientIntegrationTest(TestCase, TestWithFixtures):
             break
         try:
             yield self.client.enqueueAction("do-something", "ubuntu/0")
-        except RequestError, exception:
+        except APIRequestError as exception:
             self.assertEqual(
                 "no actions defined on charm \"cs:trusty/ubuntu-3\"",
                 exception.error)

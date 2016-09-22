@@ -17,8 +17,8 @@ from twisted.test.proto_helpers import MemoryReactorClock
 from twisted.trial.unittest import TestCase
 from twisted.web.test.test_newclient import StringTransport
 
-from .cli import JujuCLIError
-from .protocol import JujuAPIClientProtocol
+from .errors import CLIError
+from .protocol import APIClientProtocol
 
 
 FAKE_JUJU_VERSION = "1.25.6"
@@ -69,8 +69,8 @@ class ProtocolMemoryReactor(MemoryReactorClock):
             protocol._wrappedProtocol.deferred.callback(self.protocol)
 
 
-class FakeJujuBackend(object):
-    """A fake transport for a JujuAPIClientProtocol.
+class FakeAPIBackend(object):
+    """A fake transport for a APIClientProtocol.
 
     @ivar requests: Map request IDs to their payload.
     """
@@ -78,7 +78,7 @@ class FakeJujuBackend(object):
     def __init__(self, version=1):
         self.requests = {}
         self.pending = []
-        self.protocol = JujuAPIClientProtocol()
+        self.protocol = APIClientProtocol()
         self.protocol.makeConnection(self)
         self.connected = True
         self.version = version
@@ -223,8 +223,8 @@ class FakeJujuBackend(object):
             "Status": info.status}]
 
 
-class FakeJujuAPIClientProtocol(object):
-    """A fake L{JujuAPIClientProtocol}.
+class FakeAPIClientProtocol(object):
+    """A fake APIClientProtocol.
 
     @ivar requests: A list of tuples of the form (entityType, request,
         entityId, params) holding the arguments passed to C{sendRequest} calls.
@@ -307,9 +307,10 @@ class FakeJujuAPIClientProtocol(object):
         self.disconnected.callback(None)
 
 
-class FakeJujuProcess(object):
+class StubCLI(object):
 
-    def __init__(self, juju_home):
+    def __init__(self, juju_home, fail=False):
+        self._fail = fail
         self.called_fetch = False
         self.called_juju_status = False
         self.called_get_all_logs = False
@@ -318,37 +319,23 @@ class FakeJujuProcess(object):
     def fetch_file(self, *args, **kwargs):
         self.called_fetch = True
         self.calls.append(("fetch_file", args, kwargs))
+        if self._fail:
+            raise CLIError("Fetch failed", "ERROR: Fetch failed", code=1)
         return succeed("Success from FakeJujuProcess.fetch_file")
 
     def get_juju_status(self, *args, **kwargs):
         self.called_juju_status = True
         self.calls.append(("get_juju_status", args, kwargs))
+        if self._fail:
+            raise CLIError("Status failed", "ERROR: Status failed", code=1)
         return succeed("Success from FakeJujuProcess.get_juju_status")
 
     def get_all_logs(self, *args, **kwargs):
         self.called_get_all_logs = True
         self.calls.append(("get_all_logs", args, kwargs))
+        if self._fail:
+            raise CLIError("Logs failed", "ERROR: Logs failed", code=1)
         return succeed("Success from FakeJujuProcess.get_all_logs")
-
-
-class FakeFailingJujuProcess(object):
-
-    def __init__(self, juju_home):
-        self.called_fetch = False
-        self.called_juju_status = False
-        self.called_get_all_logs = False
-
-    def fetch_file(self, *args, **kwargs):
-        self.called_fetch = True
-        raise JujuProcessError("Fetch failed", "ERROR: Fetch failed", code=1)
-
-    def get_juju_status(self, *args, **kwargs):
-        self.called_juju_status = True
-        raise JujuProcessError("Status failed", "ERROR: Status failed", code=1)
-
-    def get_all_logs(self, *args, **kwargs):
-        self.called_get_all_logs = True
-        raise JujuProcessError("Logs failed", "ERROR: Logs failed", code=1)
 
 
 class FakeJujuFixture(Fixture):

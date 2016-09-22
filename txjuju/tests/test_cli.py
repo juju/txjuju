@@ -8,7 +8,7 @@ from mocker import MockerTestCase
 from twisted.internet.defer import inlineCallbacks
 
 from txjuju.testing import TwistedTestCase
-from txjuju.cli import Juju1CLI, Juju2CLI, JujuCLIError
+from txjuju.cli import Juju1CLI, Juju2CLI, CLIError
 
 
 class Juju1CLITest(TwistedTestCase, MockerTestCase):
@@ -111,18 +111,18 @@ class Juju1CLITest(TwistedTestCase, MockerTestCase):
         return deferred
 
     def test_juju_bootstrap_non_zero(self):
-        """JujuCLI.bootstrap raises JujuCLIError if bootstrap fails."""
+        """JujuCLI.bootstrap raises CLIError if bootstrap fails."""
         juju_executable = self.makeFile("#!/bin/sh\nexit 1")
         os.chmod(juju_executable, 0755)
         self.cli.juju_binary_path = juju_executable
 
         def callback(_):
-            [failure] = self.flushLoggedErrors(JujuCLIError)
+            [failure] = self.flushLoggedErrors(CLIError)
             self.assertEqual(1, failure.value.code)
 
         deferred = self.cli.bootstrap(
             self.environment_name, self.bootstrap_machine)
-        self.assertFailure(deferred, JujuCLIError)
+        self.assertFailure(deferred, CLIError)
         deferred.addCallback(callback)
         return deferred
 
@@ -334,7 +334,7 @@ class Juju2CLITest(TwistedTestCase, MockerTestCase):
 
     @inlineCallbacks
     def test_juju_bootstrap_non_zero(self):
-        """Juju2CLI.bootstrap raises JujuCLIError if bootstrap fails.
+        """Juju2CLI.bootstrap raises CLIError if bootstrap fails.
         """
         juju_executable = self.makeFile("#!/bin/sh\nexit 1")
         os.chmod(juju_executable, 0755)
@@ -342,15 +342,15 @@ class Juju2CLITest(TwistedTestCase, MockerTestCase):
 
         deferred = self.cli.bootstrap(
             self.model_name, self.bootstrap_machine, self.bootstrap_cloud)
-        self.assertFailure(deferred, JujuCLIError)
+        self.assertFailure(deferred, CLIError)
         yield deferred
-        [failure] = self.flushLoggedErrors(JujuCLIError)
+        [failure] = self.flushLoggedErrors(CLIError)
         self.assertEqual(1, failure.value.code)
 
     @inlineCallbacks
     def test_juju_api_info_non_zero(self):
         """
-        Juju2CLI.api_info raises JujuCLIError if the api-info command
+        Juju2CLI.api_info raises CLIError if the api-info command
         fails.
         """
         juju_executable = self.makeFile("#!/bin/sh\nexit 1")
@@ -358,9 +358,9 @@ class Juju2CLITest(TwistedTestCase, MockerTestCase):
         self.cli.juju_binary_path = juju_executable
 
         deferred = self.cli.api_info(self.model_name)
-        self.assertFailure(deferred, JujuCLIError)
+        self.assertFailure(deferred, CLIError)
         yield deferred
-        [failure] = self.flushLoggedErrors(JujuCLIError)
+        [failure] = self.flushLoggedErrors(CLIError)
         self.assertEqual(1, failure.value.code)
 
     @inlineCallbacks

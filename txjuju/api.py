@@ -4,7 +4,7 @@
 
 Example::
 
-    endpoint = JujuEndpoint(reactor, "ec2-1-2-3-4.compute-1.amazonaws.com")
+    endpoint = (reactor, "ec2-1-2-3-4.compute-1.amazonaws.com")
     deferred = endpoint.connect()
 
     @inlineCallbacks
@@ -21,23 +21,23 @@ import yaml
 from twisted.internet.ssl import ClientContextFactory
 
 from ._twisted.websocketsclient import WebSocketsEndpoint
-from .protocol import JujuAPIClientFactory
+from .protocol import APIClientFactory
 from .api_data import (
-    JujuModelInfo, JujuCloudInfo, UnitInfo, JujuApplicationInfo, WatcherDelta,
-    JujuApplicationConfig, AnnotationInfo, MachineInfo, ActionInfo, RunResult,
+    ModelInfo, CloudInfo, UnitInfo, ApplicationInfo, WatcherDelta,
+    ApplicationConfig, AnnotationInfo, MachineInfo, ActionInfo, RunResult,
     APIInfo)
 from .errors import (
-    RequestError, InvalidEndpointAddress, AllWatcherStoppedError)
+    APIRequestError, InvalidAPIEndpointAddress, AllWatcherStoppedError)
 
 
 MACHINE_SCOPE = "#"  # For directives targeting machine or container ids
 
 
-class JujuEndpoint(object):
+class Endpoint(object):
     """A Juju API endpoint."""
 
     defaultPort = 17070
-    factoryClass = JujuAPIClientFactory  # For testing
+    factoryClass = APIClientFactory  # For testing
 
     def __init__(self, reactor, addr, clientClass, caCert=None,
                  uuid=None):
@@ -50,7 +50,7 @@ class JujuEndpoint(object):
             will be used.
         @type addr: C{str}
 
-        @param clientClass: The JujuAPIClient implementation this endpoint uses.
+        @param clientClass: The APIClient implementation this endpoint uses.
         @type clientClass: Juju1APIClient or Juju2APIClient
 
         @param caCert: The CA certificate that will be used to validate the
@@ -69,7 +69,7 @@ class JujuEndpoint(object):
     def connect(self):
         """Connect to the API state server, with a timeout of 20s.
 
-        @return: A deferred that will callback with a connected L{JujuAPIClient}
+        @return: A deferred that will callback with a connected APIClient
             if we could connect, or errback with the relevant error.
         """
         uri = self._get_uri(self.addr)
@@ -84,25 +84,25 @@ class JujuEndpoint(object):
     def _get_uri(self, addr):
         """Return the API URI for the address.
 
-        Raise an InvalidEndpointAddress exception if the specified address is
-        not valid.
+        Raise an InvalidAPIEndpointAddress exception if the specified
+        address is not valid.
         """
         parts = addr.split(":")
         host = parts[0]
         if "/" in host:
-            raise InvalidEndpointAddress(addr)
+            raise InvalidAPIEndpointAddress(addr)
 
         if len(parts) == 1:
             port = self.defaultPort
         elif len(parts) == 2:
             port = parts[1]
         else:
-            raise InvalidEndpointAddress(addr)
+            raise InvalidAPIEndpointAddress(addr)
 
         try:
             port = int(port)
         except ValueError:
-            raise InvalidEndpointAddress(addr)
+            raise InvalidAPIEndpointAddress(addr)
         uri = "wss://%s:%d/" % (host, port)
         if self.clientClass is Juju1APIClient:
             return uri
@@ -182,7 +182,7 @@ class Juju2APIClient(object):
         """Return information about the model.
 
         @param model_uuid: the UUID of the model to look up.
-        @return: A deferred which will callback with a JujuModelInfo.
+        @return: A deferred which will callback with a ModelInfo.
         """
         params = {"entities": [{"tag": "model-" + model_uuid}]}
         deferred = self._sendRequest("ModelManager", "ModelInfo",
@@ -192,7 +192,7 @@ class Juju2APIClient(object):
     def cloud(self, cloudname):
         """Return information about the model's cloud.
 
-        @return: A deferred which will callback with a JujuCloudInfo.
+        @return: A deferred which will callback with a CloudInfo.
         """
         params = {"entities": [{"tag": "cloud-" + cloudname}]}
         deferred = self._sendRequest("Cloud", "Cloud", params=params)
@@ -515,7 +515,7 @@ class Juju2APIClient(object):
         """Parse the AddCharm API response for errors."""
         error = response.get("Error")  # XXX Watch for param renames
         if error:
-            raise RequestError(error, code="")  # No error code is defined
+            raise APIRequestError(error, code="")  # No error code is defined
 
     def _parseApiInfo(self, response):
         """Parse controller/model API endpoints information."""
@@ -555,16 +555,16 @@ class Juju2APIClient(object):
         try:
             results = response["results"]
         except KeyError:
-            raise RequestError("malformed response {}".format(response), "")
+            raise APIRequestError("malformed response {}".format(response), "")
         apiresult = _extract_single_result(results)
         _handle_api_error(apiresult)
         result = apiresult["result"]
         return self._parseModelInfoResult(result)
 
     def _parseModelInfoResult(self, result):
-        """Return the JujuModelInfo from the provided raw result."""
+        """Return the ModelInfo from the provided raw result."""
         try:
-            return JujuModelInfo(
+            return ModelInfo(
                 result[self._getParam("name")],
                 result[self._getParam("provider-type")],
                 result[self._getParam("default-series")],
@@ -575,7 +575,7 @@ class Juju2APIClient(object):
                 result.get(self._getParam("cloud-credential")),
                 )
         except KeyError:
-            raise RequestError("malformed result {}".format(result), "")
+            raise APIRequestError("malformed result {}".format(result), "")
 
     def _parseCloudResponse(self, response):
         """Parse the response of a Cloud.Cloud request.
@@ -586,11 +586,11 @@ class Juju2APIClient(object):
         result = response["results"][0]
         err = result.get("error")
         if err is not None:
-            raise RequestError(
+            raise APIRequestError(
                 err[self._getParam("message")],
                 err[self._getParam("code")])
         cloud = result["cloud"]
-        return JujuCloudInfo(cloud[self._getParam("type")],
+        return CloudInfo(cloud[self._getParam("type")],
                              cloud.get(self._getParam("auth-types"), []),
                              cloud.get(self._getParam("endpoint")),
                              cloud.get(self._getParam("storage-endpoint")),
@@ -640,7 +640,7 @@ class Juju2APIClient(object):
                             status=status,
                             statusInfo=statusInfo)
         elif kind == "application":
-            info = JujuApplicationInfo(data[self._getParam("name")],
+            info = ApplicationInfo(data[self._getParam("name")],
                                        exposed=data.get(
                                            self._getParam("exposed")),
                                        charmURL=data.get(
@@ -695,7 +695,7 @@ class Juju2APIClient(object):
         Raise C{AllWatcherStoppedError} if the watcher was stopped,
         otherwise allow other exceptions to pass through.
         """
-        failure.trap(RequestError)
+        failure.trap(APIRequestError)
         # Bug:1396680 From casual reading of Juju code, this error
         # is what happens when Juju upgrades the tools on the state
         # server.
@@ -712,7 +712,7 @@ class Juju2APIClient(object):
 
     def _parseServiceGet(self, response):
         """Parse the response of a L{serviceGet} request."""
-        return JujuApplicationConfig(
+        return ApplicationConfig(
             response[self._getParam("application")],
             response[self._getParam("charm")],
             constraints=response.get(self._getParam("constraints")),
@@ -756,7 +756,7 @@ class Juju2APIClient(object):
         for result in response["results"]:
             error = result.get("error")
             if error is not None:
-                raise RequestError(
+                raise APIRequestError(
                     error[self._getParam("message")],
                     error[self._getParam("code")])
             action_tag = result["action"]["tag"]
@@ -814,7 +814,7 @@ class Juju1APIClient(Juju2APIClient):
         The model_uuid argument is ignored.  It's only needed for
         the 2.0 client.  For 1.X there is no multi-model support.
 
-        @return: A deferred which will callback with a JujuModelInfo
+        @return: A deferred which will callback with a ModelInfo
             instance.
         """
         deferred = self._sendRequest("Client", "EnvironmentInfo")
@@ -826,7 +826,7 @@ class Juju1APIClient(Juju2APIClient):
         Note: this shouldn't be called for Juju 1.x.  Consequently, it
         hasn't been implemented and will result in a RuntimeError.
 
-        @return: A deferred which will callback with a JujuCloudInfo.
+        @return: A deferred which will callback with a CloudInfo.
         """
         raise RuntimeError("not supported under Juju 1.X")
 
@@ -944,18 +944,18 @@ class Juju1APIClient(Juju2APIClient):
 def _extract_single_result(results):
     """Return the result in the list.
 
-    If results is empty or larger than one then raise a RequestError.
+    If results is empty or larger than one then raise an APIRequestError.
     """
     if not results:
-        raise RequestError("expected 1 result, got none", "")  # no code
+        raise APIRequestError("expected 1 result, got none", "")  # no code
     if len(results) > 1:
         msg = "expected 1 result, got {}".format(len(results))
-        raise RequestError(msg, "")  # no code
+        raise APIRequestError(msg, "")  # no code
     return results[0]
 
 
 def _handle_api_error(result):
-    """Raise a RequestError if the result contains an error."""
+    """Raise a APIRequestError if the result contains an error."""
     error = result.get("error")
     if not error:
         return
@@ -963,5 +963,5 @@ def _handle_api_error(result):
         msg = error["message"] or "error"
         code = error["code"]
     except KeyError:
-        raise RequestError("malformed result {}".format(result), "")
-    raise RequestError(msg, code)
+        raise APIRequestError("malformed result {}".format(result), "")
+    raise APIRequestError(msg, code)
