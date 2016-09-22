@@ -8,7 +8,7 @@ from twisted.internet.defer import inlineCallbacks
 
 from txjuju.testing import FakeJujuFixture
 from txjuju.errors import AuthError, RequestError
-from txjuju.client import JujuEndpoint, Juju1Client
+from txjuju.api import JujuEndpoint, Juju1APIClient
 
 
 class JujuClientIntegrationTest(TestCase, TestWithFixtures):
@@ -18,7 +18,7 @@ class JujuClientIntegrationTest(TestCase, TestWithFixtures):
         super(JujuClientIntegrationTest, self).setUp()
         self.juju = self.useFixture(FakeJujuFixture())
         self.endpoint = JujuEndpoint(
-            reactor, str(self.juju.address), Juju1Client)
+            reactor, str(self.juju.address), Juju1APIClient)
         self.client = yield self.endpoint.connect()
 
     @inlineCallbacks

@@ -17,8 +17,8 @@ from twisted.test.proto_helpers import MemoryReactorClock
 from twisted.trial.unittest import TestCase
 from twisted.web.test.test_newclient import StringTransport
 
-from .process import JujuProcessError
-from .protocol import JujuClientProtocol
+from .cli import JujuCLIError
+from .protocol import JujuAPIClientProtocol
 
 
 FAKE_JUJU_VERSION = "1.25.6"
@@ -70,7 +70,7 @@ class ProtocolMemoryReactor(MemoryReactorClock):
 
 
 class FakeJujuBackend(object):
-    """A fake transport for a JujuClientProtocol.
+    """A fake transport for a JujuAPIClientProtocol.
 
     @ivar requests: Map request IDs to their payload.
     """
@@ -78,7 +78,7 @@ class FakeJujuBackend(object):
     def __init__(self, version=1):
         self.requests = {}
         self.pending = []
-        self.protocol = JujuClientProtocol()
+        self.protocol = JujuAPIClientProtocol()
         self.protocol.makeConnection(self)
         self.connected = True
         self.version = version
@@ -223,8 +223,8 @@ class FakeJujuBackend(object):
             "Status": info.status}]
 
 
-class FakeJujuClientProtocol(object):
-    """A fake L{JujuClientProtocol}.
+class FakeJujuAPIClientProtocol(object):
+    """A fake L{JujuAPIClientProtocol}.
 
     @ivar requests: A list of tuples of the form (entityType, request,
         entityId, params) holding the arguments passed to C{sendRequest} calls.

@@ -21,8 +21,8 @@ import yaml
 from twisted.internet.ssl import ClientContextFactory
 
 from ._twisted.websocketsclient import WebSocketsEndpoint
-from .protocol import JujuClientFactory
-from .entities import (
+from .protocol import JujuAPIClientFactory
+from .api_data import (
     JujuModelInfo, JujuCloudInfo, UnitInfo, JujuApplicationInfo, WatcherDelta,
     JujuApplicationConfig, AnnotationInfo, MachineInfo, ActionInfo, RunResult,
     APIInfo)
@@ -37,7 +37,7 @@ class JujuEndpoint(object):
     """A Juju API endpoint."""
 
     defaultPort = 17070
-    factoryClass = JujuClientFactory  # For testing
+    factoryClass = JujuAPIClientFactory  # For testing
 
     def __init__(self, reactor, addr, clientClass, caCert=None,
                  uuid=None):
@@ -50,8 +50,8 @@ class JujuEndpoint(object):
             will be used.
         @type addr: C{str}
 
-        @param clientClass: The JujuClient implementation this endpoint uses.
-        @type clientClass: Juju1Client or Juju2Client
+        @param clientClass: The JujuAPIClient implementation this endpoint uses.
+        @type clientClass: Juju1APIClient or Juju2APIClient
 
         @param caCert: The CA certificate that will be used to validate the
            state server's certificate, in PEM format.
@@ -69,7 +69,7 @@ class JujuEndpoint(object):
     def connect(self):
         """Connect to the API state server, with a timeout of 20s.
 
-        @return: A deferred that will callback with a connected L{JujuClient}
+        @return: A deferred that will callback with a connected L{JujuAPIClient}
             if we could connect, or errback with the relevant error.
         """
         uri = self._get_uri(self.addr)
@@ -104,14 +104,14 @@ class JujuEndpoint(object):
         except ValueError:
             raise InvalidEndpointAddress(addr)
         uri = "wss://%s:%d/" % (host, port)
-        if self.clientClass is Juju1Client:
+        if self.clientClass is Juju1APIClient:
             return uri
         if self.uuid:
             uri += "model/" + self.uuid + "/api"
         return uri
 
 
-class Juju2Client(object):
+class Juju2APIClient(object):
     """Client for the Juju 2.0 API.
 
     Each method of this class will perform the relevant Juju 2.0 API request
@@ -764,7 +764,7 @@ class Juju2Client(object):
         return action_ids
 
 
-class Juju1Client(Juju2Client):
+class Juju1APIClient(Juju2APIClient):
     """Client for the Juju 1.X API.
 
     XXX bug #1558600 duplication to be removed with "juju-2.0" feature flag.
@@ -920,7 +920,7 @@ class Juju1Client(Juju2Client):
     def _parseAllWatcherNextDelta(self, kind, data):
         if kind == "service":
             kind = "application"
-        return super(Juju1Client, self)._parseAllWatcherNextDelta(kind, data)
+        return super(Juju1APIClient, self)._parseAllWatcherNextDelta(kind, data)
 
     def _parseRunOnAllMachines(self, response):
         """Parse the response of a runOnAllMachines request."""

@@ -6,9 +6,9 @@ import yaml
 from twisted.trial.unittest import TestCase
 from twisted.test.proto_helpers import MemoryReactorClock
 
-from txjuju.protocol import JujuClientFactory
-from txjuju.client import (
-    JujuEndpoint, Juju1Client, Juju2Client, MACHINE_SCOPE)
+from txjuju.protocol import JujuAPIClientFactory
+from txjuju.api import (
+    JujuEndpoint, Juju1APIClient, Juju2APIClient, MACHINE_SCOPE)
 from txjuju.errors import (
     RequestError, InvalidEndpointAddress, AllWatcherStoppedError)
 from txjuju.testing import FakeJujuBackend
@@ -19,14 +19,14 @@ class JujuEndpointTest(TestCase):
     def setUp(self):
         super(JujuEndpointTest, self).setUp()
         self.reactor = MemoryReactorClock()
-        self.endpoint = JujuEndpoint(self.reactor, "host", Juju1Client)
+        self.endpoint = JujuEndpoint(self.reactor, "host", Juju1APIClient)
 
     def test_connect(self):
         """
         The connect method uses the endpoint information provided in
         the constructor.
         """
-        factory = JujuClientFactory()
+        factory = JujuAPIClientFactory()
         self.endpoint.factoryClass = lambda: factory
         self.endpoint.connect()
         [(host, port, _, _, _, _)] = self.reactor.sslClients
@@ -35,8 +35,8 @@ class JujuEndpointTest(TestCase):
 
     def test_connect_non_default_port(self):
         """It's possible to specify a different port in the endpoint."""
-        self.endpoint = JujuEndpoint(self.reactor, "host:1234", Juju1Client)
-        factory = JujuClientFactory()
+        self.endpoint = JujuEndpoint(self.reactor, "host:1234", Juju1APIClient)
+        factory = JujuAPIClientFactory()
         self.endpoint.factoryClass = lambda: factory
         self.endpoint.connect()
         [(host, port, _, _, _, _)] = self.reactor.sslClients
@@ -57,7 +57,7 @@ class JujuEndpointTest(TestCase):
     def test_wb_get_uri_juju2(self):
         """The _get_uri method returns the Juju 2.0 model endpoint URI."""
         endpoint = JujuEndpoint(
-            self.reactor, "host", clientClass=Juju2Client, uuid="uuid-123")
+            self.reactor, "host", clientClass=Juju2APIClient, uuid="uuid-123")
         self.assertEqual(
             "wss://1.2.3.4:17070/model/uuid-123/api",
             endpoint._get_uri("1.2.3.4"))
@@ -89,12 +89,12 @@ class JujuEndpointTest(TestCase):
             "/www.example.com")
 
 
-class Juju1ClientTest(TestCase):
+class Juju1APIClientTest(TestCase):
 
     def setUp(self):
-        super(Juju1ClientTest, self).setUp()
+        super(Juju1APIClientTest, self).setUp()
         self.backend = FakeJujuBackend()
-        self.client = Juju1Client(self.backend.protocol)
+        self.client = Juju1APIClient(self.backend.protocol)
 
     def test_login(self):
         """
@@ -776,13 +776,13 @@ class Juju1ClientTest(TestCase):
         self.assertEqual("boom", failure.value.code)
 
 
-class Juju2ClientTest(TestCase):
-    """Test Juju2Client."""
+class Juju2APIClientTest(TestCase):
+    """Test Juju2APIClient."""
 
     def setUp(self):
-        super(Juju2ClientTest, self).setUp()
+        super(Juju2APIClientTest, self).setUp()
         self.backend = FakeJujuBackend()
-        self.client = Juju2Client(self.backend.protocol)
+        self.client = Juju2APIClient(self.backend.protocol)
 
     def test_login(self):
         """

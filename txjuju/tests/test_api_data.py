@@ -2,7 +2,7 @@
 
 from unittest import TestCase
 
-from txjuju.entities import (
+from txjuju.api_data import (
     JujuApplicationConfig, MachineInfo, AnnotationInfo, ActionInfo)
 
 

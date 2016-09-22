@@ -14,8 +14,7 @@ from twisted.internet.protocol import ProcessProtocol
 from twisted.python import log
 
 
-# TODO: Extract commonality with c.l.reprepro.RepreproError
-class JujuProcessError(Exception):
+class JujuCLIError(Exception):
     """Raised when juju fails."""
 
     def __init__(self, out, err, code=None, signal=None):
@@ -29,12 +28,11 @@ class JujuProcessError(Exception):
         if signal is not None:
             reason = "signal %d" % signal
 
-        super(JujuProcessError, self).__init__(
+        super(JujuCLIError, self).__init__(
             "juju ended with %s (out='%s', err='%s')" % (reason, out, err))
 
 
-class Juju1Process(object):
-    # XXX bug #1558600 to be removed with "juju-2.0" feature flag
+class Juju1CLI(object):
 
     # Allow override for testing purposes, normal use should not need
     # to change this.
@@ -133,12 +131,12 @@ class Juju1Process(object):
     def _handle_success(self, result):
         """Check that the process terminated with no error.
 
-        In case of error a L{JujuProcessError} exception will be
+        In case of error a L{JujuCLIError} exception will be
         raised with the details of the process run.
         """
         out, err, code = result
         if code != 0:
-            error = JujuProcessError(out, err, code=code)
+            error = JujuCLIError(out, err, code=code)
             log.err(error)
             raise error
         return out, err
@@ -146,12 +144,12 @@ class Juju1Process(object):
     def _handle_failure(self, failure):
         """Handle process termination because of a a signal."""
         out, err, signal = failure.value
-        error = JujuProcessError(out, err, signal=signal)
+        error = JujuCLIError(out, err, signal=signal)
         log.err(error)
         raise error
 
 
-class Juju2Process(object):
+class Juju2CLI(object):
 
     # Allow override for testing purposes, normal use should not need
     # to change this.
@@ -272,12 +270,12 @@ class Juju2Process(object):
     def _handle_success(self, result):
         """Check that the process terminated with no error.
 
-        In case of error a L{JujuProcessError} exception will be
+        In case of error a L{JujuCLIError} exception will be
         raised with the details of the process run.
         """
         out, err, code = result
         if code != 0:
-            error = JujuProcessError(out, err, code=code)
+            error = JujuCLIError(out, err, code=code)
             log.err(error)
             raise error
         return out, err
@@ -285,7 +283,7 @@ class Juju2Process(object):
     def _handle_failure(self, failure):
         """Handle process termination because of a a signal."""
         out, err, signal = failure.value
-        error = JujuProcessError(out, err, signal=signal)
+        error = JujuCLIError(out, err, signal=signal)
         log.err(error)
         raise error
 

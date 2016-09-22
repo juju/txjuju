@@ -5,16 +5,16 @@ from json import loads, dumps
 from twisted.trial.unittest import TestCase
 from twisted.internet.error import ConnectionDone
 
-from txjuju.protocol import JujuClientProtocol
+from txjuju.protocol import JujuAPIClientProtocol
 from txjuju.errors import RequestError, RetriableError
 
 
-class JujuClientProtocolTest(TestCase):
+class JujuAPIClientProtocolTest(TestCase):
 
     def setUp(self):
-        super(JujuClientProtocolTest, self).setUp()
+        super(JujuAPIClientProtocolTest, self).setUp()
         self.messages = []
-        self.protocol = JujuClientProtocol()
+        self.protocol = JujuAPIClientProtocol()
 
         class Transport(object):
             write = self.messages.append

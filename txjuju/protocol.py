@@ -24,7 +24,7 @@ ERROR_CODES = {
 }
 
 
-class JujuClientProtocol(Protocol):
+class JujuAPIClientProtocol(Protocol):
     """A client protocol that knows how to speak to a Juju API server.
 
     @ivar disconnected: A deferred fired when the connection drops.
@@ -123,7 +123,7 @@ class JujuClientProtocol(Protocol):
             deferred.callback(payload.pop("Response", {}))
 
 
-class JujuClientFactory(Factory):
+class JujuAPIClientFactory(Factory):
     """Build L{JujuProtocol} instances."""
 
-    protocol = JujuClientProtocol
+    protocol = JujuAPIClientProtocol

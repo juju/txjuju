@@ -7,12 +7,12 @@ JUJU1 = "juju"
 JUJU2 = "juju-2.0"
 
 
-def get_process_class(release=JUJU1):
+def get_cli_class(release=JUJU1):
     """Return the juju CLI wrapper for the given release."""
-    from . import process
+    from . import cli
     if release == JUJU1:
-        return process.Juju1Process
+        return cli.Juju1CLI
     elif release == JUJU2:
-        return process.Juju2Process
+        return cli.Juju2CLI
     else:
         raise ValueError("unsupported release {!r}".format(release))
