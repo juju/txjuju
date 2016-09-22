@@ -42,7 +42,13 @@ for path, dirs, files in os.walk(package_name):
 
 # dependencies
 
-DEPS = ['twisted']
+DEPS = ['twisted',
+        'yaml',
+        # for testing
+        'fixtures',
+        'testtools',
+        'mocker',
+        ]
 
 
 if __name__ == "__main__":
