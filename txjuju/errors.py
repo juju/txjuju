@@ -9,7 +9,8 @@ class CLIError(Exception):
             reason = "exit code {}".format(code)
         if signal is not None:
             reason = "signal {}".format(signal)
-        msg = "juju ended with {} (out='{}', err='{}')".format(reason, out, err)
+        msg = ("juju ended with {} (out='{}', err='{}')"
+               ).format(reason, out, err)
         super(CLIError, self).__init__(msg)
 
         self.out = out

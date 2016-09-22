@@ -76,17 +76,14 @@ class EndpointTest(TestCase):
         The _get_uri method raises an exception if the the address is
         invalid.
         """
-        self.assertRaises(
-            InvalidAPIEndpointAddress, self.endpoint._get_uri,
-            "http://www.example.com/")
-        self.assertRaises(
-            InvalidAPIEndpointAddress, self.endpoint._get_uri, "1.2.3.4:badport")
-        self.assertRaises(
-            InvalidAPIEndpointAddress, self.endpoint._get_uri,
-            "www.example.com/foo")
-        self.assertRaises(
-            InvalidAPIEndpointAddress, self.endpoint._get_uri,
-            "/www.example.com")
+        with self.assertRaises(InvalidAPIEndpointAddress):
+            self.endpoint._get_uri("http://www.example.com/")
+        with self.assertRaises(InvalidAPIEndpointAddress):
+            self.endpoint._get_uri("1.2.3.4:badport")
+        with self.assertRaises(InvalidAPIEndpointAddress):
+            self.endpoint._get_uri("www.example.com/foo")
+        with self.assertRaises(InvalidAPIEndpointAddress):
+            self.endpoint._get_uri("/www.example.com")
 
 
 class Juju1APIClientTest(TestCase):
@@ -389,7 +386,8 @@ class Juju1APIClientTest(TestCase):
         If allWatcherNext receives a different error it is re-raised.
         """
         deferred = self.client.allWatcherNext("1")
-        self.backend.error(APIRequestError("Quis custodiet ipsos custodes?", ""))
+        self.backend.error(
+            APIRequestError("Quis custodiet ipsos custodes?", ""))
         failure = self.failureResultOf(deferred)
         self.assertIsInstance(failure.value, APIRequestError)
 
@@ -838,16 +836,18 @@ class Juju2APIClientTest(TestCase):
         self.assertEqual(2, self.backend.lastVersion)
         self.assertEqual({"entities": [{"tag": "model-" + uuid}]},
                          self.backend.lastParams)
-        self.backend.response({"results": [{"result":
-            {u"name": u"my-maas",
-             u"provider-type": u"maas",
-             u"default-series": u"precise",
-             u"uuid": uuid,
-             u"controller-uuid": u"a0c03f34-ea02-11e2-8e96-875122dd4b53",
-             u"cloud": "maas1",
-             u"cloud-region": "1",
-             u"cloud-credential": "abc123...",
-             }}]})
+        self.backend.response(
+            {"results": [{"result": {
+                u"name": u"my-maas",
+                u"provider-type": u"maas",
+                u"default-series": u"precise",
+                u"uuid": uuid,
+                u"controller-uuid": u"a0c03f34-ea02-11e2-8e96-875122dd4b53",
+                u"cloud": "maas1",
+                u"cloud-region": "1",
+                u"cloud-credential": "abc123...",
+                }}],
+             })
 
         modelInfo = self.successResultOf(deferred)
         self.assertEqual("my-maas", modelInfo.name)

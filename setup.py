@@ -19,7 +19,7 @@ PROJECT_URL = 'https://github.com/juju/txjuju'
 LICENSE = 'LGPLv3'
 
 with open(os.path.join(basedir, 'README.md')) as readme_file:
-     DESCRIPTION = readme_file.read()
+    DESCRIPTION = readme_file.read()
 
 # dymanically generated data
 
@@ -28,7 +28,7 @@ VERSION = import_module(package_name).__version__
 # set up packages
 
 exclude_dirs = [
-	'tests',
+        'tests',
         ]
 
 PACKAGES = []

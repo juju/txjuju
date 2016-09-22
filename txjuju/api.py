@@ -397,15 +397,13 @@ class Juju2APIClient(object):
         # by specifying a parameters dict as an item in the Applications list.
         deferred = self._sendRequest(
             self._api_application_facade, "Deploy",
-            params={"applications":
-                [application_params]})
+            params={"applications": [application_params]})
         return deferred.addCallback(lambda _: None)  # No data in the response
 
     def addCharm(self, charmURL):
         """Add a charm to the juju model so that it may be deployed."""
         params = {"url": charmURL}
-        deferred = self._sendRequest(
-            "Client", "AddCharm", params=params)
+        deferred = self._sendRequest("Client", "AddCharm", params=params)
         return deferred.addCallback(self._parseAddCharm)
 
     def addUnit(self, serviceName, scope, directive):
@@ -590,12 +588,13 @@ class Juju2APIClient(object):
                 err[self._getParam("message")],
                 err[self._getParam("code")])
         cloud = result["cloud"]
-        return CloudInfo(cloud[self._getParam("type")],
-                             cloud.get(self._getParam("auth-types"), []),
-                             cloud.get(self._getParam("endpoint")),
-                             cloud.get(self._getParam("storage-endpoint")),
-                             cloud.get(self._getParam("regions"), []),
-                             )
+        return CloudInfo(
+            cloud[self._getParam("type")],
+            cloud.get(self._getParam("auth-types"), []),
+            cloud.get(self._getParam("endpoint")),
+            cloud.get(self._getParam("storage-endpoint")),
+            cloud.get(self._getParam("regions"), []),
+            )
 
     def _getDeltaJujuStatus(self, delta):
         """Return a tuple of juju status and status-info for juju2 deltas."""
@@ -626,58 +625,57 @@ class Juju2APIClient(object):
         """
         if kind == "unit":
             status, statusInfo = self._getDeltaJujuStatus(data)
-            info = UnitInfo(data[self._getParam("name")],
-                            data[self._getParam("application")],
-                            series=data.get(self._getParam("series")),
-                            charmURL=data.get(self._getParam("charm-url")),
-                            publicAddress=data.get(
-                                self._getParam("public-address")),
-                            privateAddress=data.get(
-                                self._getParam("private-address")),
-                            machineId=data.get(
-                                self._getParam("machine-id")),
-                            ports=data.get(self._getParam("ports")),
-                            status=status,
-                            statusInfo=statusInfo)
+            info = UnitInfo(
+                data[self._getParam("name")],
+                data[self._getParam("application")],
+                series=data.get(self._getParam("series")),
+                charmURL=data.get(self._getParam("charm-url")),
+                publicAddress=data.get(self._getParam("public-address")),
+                privateAddress=data.get(self._getParam("private-address")),
+                machineId=data.get(self._getParam("machine-id")),
+                ports=data.get(self._getParam("ports")),
+                status=status,
+                statusInfo=statusInfo,
+                )
         elif kind == "application":
-            info = ApplicationInfo(data[self._getParam("name")],
-                                       exposed=data.get(
-                                           self._getParam("exposed")),
-                                       charmURL=data.get(
-                                           self._getParam("charm-url")),
-                                       life=data.get(
-                                           self._getParam("life")),
-                                       constraints=data.get(
-                                           self._getParam("constraints")),
-                                       config=data.get(
-                                           self._getParam("config")),
-                                       )
+            info = ApplicationInfo(
+                data[self._getParam("name")],
+                exposed=data.get(self._getParam("exposed")),
+                charmURL=data.get(self._getParam("charm-url")),
+                life=data.get(self._getParam("life")),
+                constraints=data.get(self._getParam("constraints")),
+                config=data.get(self._getParam("config")),
+                )
         elif kind == "annotation":
-            info = AnnotationInfo(data[self._getParam("tag")],
-                                  data[self._getParam("annotations")])
+            info = AnnotationInfo(
+                data[self._getParam("tag")],
+                data[self._getParam("annotations")],
+                )
         elif kind == "machine":
             status, statusInfo = self._getDeltaJujuStatus(data)
             # beta11 addresses will be None instead of [] when pending
             address = self._parseAddresses(
                 data.get(self._getParam("addresses")) or [])
-            info = MachineInfo(data[self._getParam("id")],
-                               instanceId=data[
-                                   self._getParam("instance-id")],
-                               status=status,
-                               statusInfo=statusInfo,
-                               jobs=data.get(self._getParam("jobs")),
-                               address=address,
-                               hasVote=data.get(self._getParam("has-vote")),
-                               wantsVote=data.get(
-                                   self._getParam("wants-vote")))
+            info = MachineInfo(
+                data[self._getParam("id")],
+                instanceId=data[self._getParam("instance-id")],
+                status=status,
+                statusInfo=statusInfo,
+                jobs=data.get(self._getParam("jobs")),
+                address=address,
+                hasVote=data.get(self._getParam("has-vote")),
+                wantsVote=data.get(self._getParam("wants-vote")),
+                )
         elif kind == "action":
             results = data.get(self._getParam("results"))
-            info = ActionInfo(data[self._getParam("id")],
-                              data[self._getParam("name")],
-                              data[self._getParam("receiver")],
-                              data[self._getParam("status")],
-                              message=data[self._getParam("message")],
-                              results=results)
+            info = ActionInfo(
+                data[self._getParam("id")],
+                data[self._getParam("name")],
+                data[self._getParam("receiver")],
+                data[self._getParam("status")],
+                message=data[self._getParam("message")],
+                results=results,
+                )
         # TODO implement the 'relation' kind
         else:
             # Unknown kinds are silently dropped, for forward compatibility
@@ -920,7 +918,8 @@ class Juju1APIClient(Juju2APIClient):
     def _parseAllWatcherNextDelta(self, kind, data):
         if kind == "service":
             kind = "application"
-        return super(Juju1APIClient, self)._parseAllWatcherNextDelta(kind, data)
+        return (super(Juju1APIClient, self)
+                )._parseAllWatcherNextDelta(kind, data)
 
     def _parseRunOnAllMachines(self, response):
         """Parse the response of a runOnAllMachines request."""

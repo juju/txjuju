@@ -302,7 +302,7 @@ def spawn_process(executable, args, env, outfile=None):
 
 class AllOutputProcessProtocol(ProcessProtocol):
     """A process protocol for getting stdout, stderr and exit code.
-    
+
     (based on landscape.lib.twisted_util.AllOutputProcessProtocol)
     """
 
