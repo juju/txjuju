@@ -7,6 +7,11 @@ JUJU1 = "juju"
 JUJU2 = "juju-2.0"
 
 
+from .errors import (
+    CLIError, APIRequestError, APIAuthError, APIRetriableError,
+    AllWatcherStoppedError, InvalidAPIEndpointAddress)
+
+
 def get_cli_class(release=JUJU1):
     """Return the juju CLI wrapper for the given release."""
     from . import cli
@@ -16,3 +21,8 @@ def get_cli_class(release=JUJU1):
         return cli.Juju2CLI
     else:
         raise ValueError("unsupported release {!r}".format(release))
+
+
+# Appease pyflakes
+(CLIError, APIRequestError, APIAuthError, APIRetriableError,
+    AllWatcherStoppedError, InvalidAPIEndpointAddress)
