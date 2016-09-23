@@ -13,43 +13,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 from twisted.internet.protocol import ProcessProtocol
 from twisted.python import log
 
-from . import config
 from .errors import CLIError
-
-
-class BootstrapSpec(object):
-    """A specification of the information with which to bootstrap."""
-
-    DEFAULT_SERIES = "trusty"
-
-    def __init__(self, name, type, default_series=None, admin_secret=None):
-        """
-        @param name: The name of the controller to bootstrap.
-        @param type: The provider type to use.
-        @param default_series: The OS series to provision by default.
-            If not provided, it defaults to trusty.
-        @param admin_secret: The password to use for the admin user,
-            if any.
-        """
-        if default_series is None:
-            default_series = self.DEFAULT_SERIES
-
-        self.name = name
-        self.type = type
-        self.default_series = default_series
-        self.admin_secret = admin_secret
-
-    def config(self):
-        """Return the JujuConfig corresponding to this spec."""
-        cloud_name = self.type
-        controller = config.JujuControllerConfig(
-            self.name,
-            self.type,
-            cloud_name,
-            self.default_series,
-            self.admin_secret,
-            )
-        return config.JujuConfig(controller)
 
 
 class Juju1CLI(object):
