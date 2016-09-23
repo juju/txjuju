@@ -39,10 +39,10 @@ class Config(object):
             raise RuntimeError("unsupported Juju version {!r}".format(version))
 
         if clobber:
+            _prepare_cfgdir(cfgdir)
+        else:
             filenames = writer.filenames(self._controllers)
             _prepare_cfgdir(cfgdir, filenames)
-        else:
-            _prepare_cfgdir(cfgdir)
 
         return writer.write(self._controllers, cfgdir)
 
@@ -65,10 +65,15 @@ class ControllerConfig(
         @param admin_secret: The password to use for the admin user,
             if any.
         """
+        name = unicode(name) if name else None
+        type = unicode(type) if type else None
         if cloud_name is None:
             cloud_name = "{}-{}".format(name, type)
+        cloud_name = unicode(cloud_name) if cloud_name else None
         if default_series is None:
             default_series = cls.DEFAULT_SERIES
+        default_series = unicode(default_series) if default_series else None
+        admin_secret = unicode(admin_secret) if admin_secret else None
         return super(ControllerConfig, cls).__new__(
             cls, name, type, cloud_name, default_series, admin_secret)
 
@@ -110,8 +115,13 @@ class CloudConfig(
         @param credentials: The set of credentials configured
             for this cloud, if any.
         """
-        # TODO Add provider-specific abstractions to support this.
+        name = unicode(name) if name else None
+        type = unicode(type) if type else None
+        endpoint = unicode(endpoint) if endpoint else None
+        # TODO Add provider-specific abstractions to support auth_types?
         # TODO Add support for auth_types and credentials as soon as needed.
+        auth_types = tuple(auth_types) if auth_types else None
+        credentials = tuple(credentials) if credentials else None
         return super(CloudConfig, cls).__new__(
             cls, name, type, endpoint, auth_types, credentials)
 
@@ -144,8 +154,10 @@ class BootstrapConfig(
         """
         if default_series is None:
             default_series = cls.DEFAULT_SERIES
+        default_series = unicode(default_series) if default_series else None
+        admin_secret = unicode(admin_secret) if admin_secret else None
         return super(BootstrapConfig, cls).__new__(
-            default_series, admin_secret)
+            cls, default_series, admin_secret)
 
 
 def _prepare_cfgdir(cfgdir, protect_filenames=None):

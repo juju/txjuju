@@ -42,8 +42,9 @@ class Writer(object):
         """
         config = {
             "type": env.type,
-            "default-series": env.default_series,
-        }
+            }
+        if env.default_series:
+            config["default-series"] = env.default_series
         if env.admin_secret:
             config["admin-secret"] = env.admin_secret
         return config

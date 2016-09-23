@@ -22,14 +22,16 @@ class Writer(object):
 
         clouds_filename = os.path.join(cfgdir, "clouds.yaml")
         with open(clouds_filename, "w") as fd:
-            yaml.safe_dump(configs["clouds"], fd)
+            config = {"clouds": configs["clouds"]}
+            yaml.safe_dump(config, fd)
 
         credentials_filename = os.path.join(cfgdir, "credentials.yaml")
         with open(credentials_filename, "w") as fd:
-            yaml.safe_dump(configs["credentials"], fd)
+            config = {"credentials": configs["credentials"]}
+            yaml.safe_dump(config, fd)
 
         bootstrap_filenames = {}
-        for name, config in configs["bootstrap"]:
+        for name, config in configs["bootstrap"].items():
             filename = "bootstrap-{}.yaml".format(name)
             bootstrap_filename = os.path.join(cfgdir, filename)
             with open(bootstrap_filename, "w") as fd:
@@ -41,10 +43,10 @@ class Writer(object):
     def _as_dicts(self, controllers):
         """Return a YAML-serializable version of the config."""
         configs = {
-                "clouds": {},
-                "credentials": {},
-                "bootstrap": {},
-                }
+            "clouds": {},
+            "credentials": {},
+            "bootstrap": {},
+            }
         if not controllers:
             return configs
         clouds = configs["clouds"] = {}
@@ -69,8 +71,8 @@ class Writer(object):
             raise NotImplementedError
         else:
             config = {
-                    "type": cloud.type,
-                    }
+                "type": cloud.type,
+                }
             if cloud.endpoint:
                 config["endpoint"] = str(cloud.endpoint)
             # TODO Add support for auth_types as soon as needed.
