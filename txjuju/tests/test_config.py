@@ -35,20 +35,22 @@ class ConfigTest(_ConfigTest, unittest.TestCase):
     version = "1.25.6"
 
     def populate_cfgdir(self, name):
-        controller = ControllerConfig(name, "lxd", "my-lxd", "xenial", "pw")
+        controller = ControllerConfig.from_info(
+            name, "lxd", "my-lxd", "xenial", "pw")
         cfg = Config(controller)
         cfg.write(self.cfgdir, self.version)
 
     def test_write_cfgdir_missing(self):
         cfgdir = os.path.join(self.cfgdir, "one", "two", "three")
-        cfg = Config(ControllerConfig("eggs", "maas"))
+        cfg = Config(ControllerConfig("eggs", CloudConfig("maas")))
         cfg.write(cfgdir, self.version, clobber=True)
 
         self.assertEqual(os.listdir(cfgdir), ["environments.yaml"])
 
     def test_write_clobber_collision(self):
         self.populate_cfgdir("spam")
-        cfg = Config(ControllerConfig("eggs", "maas", default_series=""))
+        cfg = Config(ControllerConfig(
+            "eggs", CloudConfig("maas"), BootstrapConfig("")))
         cfg.write(self.cfgdir, self.version, clobber=True)
 
         self.assert_cfgfile(
@@ -56,14 +58,14 @@ class ConfigTest(_ConfigTest, unittest.TestCase):
             {"environments": {"eggs": {"type": "maas"}}})
 
     def test_write_clobber_no_collision(self):
-        cfg = Config(ControllerConfig("eggs", "maas"))
+        cfg = Config(ControllerConfig("eggs", CloudConfig("maas")))
         cfg.write(self.cfgdir, self.version, clobber=True)
 
         self.assertEqual(os.listdir(self.cfgdir), ["environments.yaml"])
 
     def test_write_no_clobber_collision(self):
         self.populate_cfgdir("spam")
-        cfg = Config(ControllerConfig("eggs", "maas"))
+        cfg = Config(ControllerConfig("eggs", CloudConfig("maas")))
 
         with self.assertRaises(RuntimeError):
             cfg.write(self.cfgdir, self.version, clobber=False)
@@ -79,7 +81,7 @@ class ConfigTest(_ConfigTest, unittest.TestCase):
              })
 
     def test_write_no_clobber_no_collision(self):
-        cfg = Config(ControllerConfig("eggs", "maas"))
+        cfg = Config(ControllerConfig("eggs", CloudConfig("maas")))
         cfg.write(self.cfgdir, self.version, clobber=False)
 
         self.assertEqual(os.listdir(self.cfgdir), ["environments.yaml"])
@@ -90,8 +92,8 @@ class ConfigTest_Juju1(_ConfigTest, unittest.TestCase):
     VERSION = "1.25.6"
 
     def test_write_one_full(self):
-        controller = ControllerConfig("spam", "lxd", "my-lxd", "xenial", "pw")
-        cfg = Config(controller)
+        cfg = Config(ControllerConfig.from_info(
+            "spam", "lxd", "my-lxd", "xenial", "pw"))
         bootstraps = cfg.write(self.cfgdir, self.VERSION)
 
         self.assertIsNone(bootstraps)
@@ -108,8 +110,8 @@ class ConfigTest_Juju1(_ConfigTest, unittest.TestCase):
              })
 
     def test_write_one_minimal(self):
-        controller = ControllerConfig("spam", "lxd", "my-lxd", "", "")
-        cfg = Config(controller)
+        cfg = Config(
+            ControllerConfig.from_info("spam", "lxd", "my-lxd", "", ""))
         bootstraps = cfg.write(self.cfgdir, self.VERSION)
 
         self.assertIsNone(bootstraps)
@@ -124,11 +126,12 @@ class ConfigTest_Juju1(_ConfigTest, unittest.TestCase):
              })
 
     def test_write_multiple(self):
-        controller1 = ControllerConfig(
-            "spam", "lxd", "my-lxd", "xenial", "sekret")
-        controller2 = ControllerConfig(
-            "eggs", "maas", "maas", "trusty", "pw")
-        cfg = Config(controller1, controller2)
+        cfg = Config(
+            ControllerConfig.from_info(
+                "spam", "lxd", "my-lxd", "xenial", "sekret"),
+            ControllerConfig.from_info(
+                "eggs", "maas", "maas", "trusty", "pw"),
+            )
         bootstraps = cfg.write(self.cfgdir, self.VERSION)
 
         self.assertIsNone(bootstraps)
@@ -163,8 +166,8 @@ class ConfigTest_Juju2(_ConfigTest, unittest.TestCase):
     VERSION = "2.0.0"
 
     def test_write_one_full(self):
-        controller = ControllerConfig("spam", "lxd", "my-lxd", "xenial", "pw")
-        cfg = Config(controller)
+        cfg = Config(ControllerConfig.from_info(
+            "spam", "lxd", "my-lxd", "xenial", "pw"))
         bootstraps = cfg.write(self.cfgdir, self.VERSION)
 
         self.assertEquals(
@@ -189,8 +192,8 @@ class ConfigTest_Juju2(_ConfigTest, unittest.TestCase):
         self.assert_cfgfile("credentials.yaml", {"credentials": {}})
 
     def test_write_one_minimal(self):
-        controller = ControllerConfig("spam", "lxd", "my-lxd", "", "")
-        cfg = Config(controller)
+        cfg = Config(ControllerConfig.from_info(
+            "spam", "lxd", "my-lxd", "", ""))
         bootstraps = cfg.write(self.cfgdir, self.VERSION)
 
         self.assertEquals(
@@ -203,10 +206,7 @@ class ConfigTest_Juju2(_ConfigTest, unittest.TestCase):
              "clouds.yaml",
              "credentials.yaml",
              ])
-        self.assert_cfgfile(
-            "bootstrap-spam.yaml",
-            {"default-series": "trusty",
-             })
+        self.assert_cfgfile("bootstrap-spam.yaml", {})
         self.assert_cfgfile(
             "clouds.yaml",
             {"clouds": {"my-lxd": {
@@ -215,11 +215,12 @@ class ConfigTest_Juju2(_ConfigTest, unittest.TestCase):
         self.assert_cfgfile("credentials.yaml", {"credentials": {}})
 
     def test_write_multiple(self):
-        controller1 = ControllerConfig(
-            "spam", "lxd", "my-lxd", "xenial", "sekret")
-        controller2 = ControllerConfig(
-            "eggs", "maas", "maas", "trusty", "pw")
-        cfg = Config(controller1, controller2)
+        cfg = Config(
+            ControllerConfig.from_info(
+                "spam", "lxd", "my-lxd", "xenial", "sekret"),
+            ControllerConfig.from_info(
+                "eggs", "maas", "maas", "trusty", "pw"),
+            )
         bootstraps = cfg.write(self.cfgdir, self.VERSION)
 
         self.assertEquals(
@@ -270,58 +271,80 @@ class ConfigTest_Juju2(_ConfigTest, unittest.TestCase):
 
 class ControllerConfigTest(unittest.TestCase):
 
-    def test_full(self):
-        cfg = ControllerConfig(
+    def test_from_info_full(self):
+        cfg = ControllerConfig.from_info(
             u"spam", u"lxd", u"my-lxd", u"xenial", u"sekret")
 
         self.assertEqual(cfg.name, u"spam")
-        self.assertEqual(cfg.type, u"lxd")
-        self.assertEqual(cfg.cloud_name, u"my-lxd")
-        self.assertEqual(cfg.default_series, u"xenial")
-        self.assertEqual(cfg.admin_secret, u"sekret")
+        self.assertEqual(cfg.cloud, CloudConfig(u"my-lxd", u"lxd"))
+        self.assertEqual(cfg.bootstrap, BootstrapConfig(u"xenial", u"sekret"))
+
+    def test_from_info_minimal(self):
+        cfg = ControllerConfig.from_info(u"spam", u"lxd")
+
+        self.assertEqual(cfg.name, u"spam")
+        self.assertEqual(cfg.cloud, CloudConfig(u"spam-lxd", u"lxd"))
+        self.assertEqual(cfg.bootstrap, BootstrapConfig(u"trusty"))
+
+    def test_from_info_conversions(self):
+        cfg = ControllerConfig.from_info(
+            "spam", "lxd", "my-lxd", "xenial", "sekret")
+
+        self.assertEqual(cfg.name, u"spam")
+
+    def test_from_info_empty(self):
+        cfg = ControllerConfig.from_info(u"spam", u"lxd", u"my-lxd", u"", u"")
+
+        self.assertEqual(cfg.name, u"spam")
+        self.assertEqual(cfg.cloud, CloudConfig(u"my-lxd", u"lxd"))
+        self.assertEqual(cfg.bootstrap, BootstrapConfig(""))
+
+    def test_from_info_missing_name(self):
+        with self.assertRaises(ValueError):
+            ControllerConfig.from_info(None, "lxd")
+        with self.assertRaises(ValueError):
+            ControllerConfig.from_info("", "lxd")
+
+    def test_from_info_missing_type(self):
+        with self.assertRaises(ValueError):
+            ControllerConfig.from_info("spam", None)
+        with self.assertRaises(ValueError):
+            ControllerConfig.from_info("spam", "")
+
+    def test_from_info_missing_cloud_name(self):
+        with self.assertRaises(ValueError):
+            ControllerConfig.from_info("spam", "lxd", "")
+
+    def test_full(self):
+        cloud = CloudConfig("my-lxd", "lxd", "https://localhost:8080")
+        bootstrap = BootstrapConfig("xenial", "sekret")
+        cfg = ControllerConfig(u"spam", cloud, bootstrap)
+
+        self.assertEqual(cfg, (u"spam", cloud, bootstrap))
 
     def test_minimal(self):
-        cfg = ControllerConfig(u"spam", u"lxd")
+        cloud = CloudConfig("lxd")
+        cfg = ControllerConfig(u"spam", cloud)
 
-        self.assertEqual(cfg.name, u"spam")
-        self.assertEqual(cfg.type, u"lxd")
-        self.assertEqual(cfg.cloud_name, u"spam-lxd")
-        self.assertEqual(cfg.default_series, u"trusty")
-        self.assertIsNone(cfg.admin_secret)
+        self.assertEqual(cfg, (u"spam", cloud, BootstrapConfig("")))
 
     def test_conversions(self):
-        cfg = ControllerConfig("spam", "lxd", "my-lxd", "xenial", "sekret")
+        cloud = CloudConfig("lxd")
+        bootstrap = BootstrapConfig("xenial")
+        cfg = ControllerConfig("spam", cloud, bootstrap)
 
-        self.assertEqual(cfg.name, u"spam")
-        self.assertEqual(cfg.type, u"lxd")
-        self.assertEqual(cfg.cloud_name, u"my-lxd")
-        self.assertEqual(cfg.default_series, u"xenial")
-        self.assertEqual(cfg.admin_secret, u"sekret")
-
-    def test_empty(self):
-        cfg = ControllerConfig(u"spam", u"lxd", u"my-lxd", u"", u"")
-
-        self.assertEqual(cfg.name, u"spam")
-        self.assertEqual(cfg.type, u"lxd")
-        self.assertEqual(cfg.cloud_name, u"my-lxd")
-        self.assertIsNone(cfg.default_series)
-        self.assertIsNone(cfg.admin_secret)
+        self.assertEqual(cfg, (u"spam", cloud, bootstrap))
 
     def test_missing_name(self):
+        cloud = CloudConfig("lxd")
         with self.assertRaises(ValueError):
-            ControllerConfig(None, "lxd")
+            ControllerConfig(None, cloud)
         with self.assertRaises(ValueError):
-            ControllerConfig("", "lxd")
+            ControllerConfig("", cloud)
 
-    def test_missing_type(self):
+    def test_missing_cloud(self):
         with self.assertRaises(ValueError):
             ControllerConfig("spam", None)
-        with self.assertRaises(ValueError):
-            ControllerConfig("spam", "")
-
-    def test_missing_cloud_name(self):
-        with self.assertRaises(ValueError):
-            ControllerConfig("spam", "lxd", "")
 
 
 class CloudConfigTest(unittest.TestCase):
@@ -336,9 +359,9 @@ class CloudConfigTest(unittest.TestCase):
         self.assertIsNone(cfg.credentials)
 
     def test_minimal(self):
-        cfg = CloudConfig(u"spam", u"lxd")
+        cfg = CloudConfig(u"lxd")
 
-        self.assertEqual(cfg.name, u"spam")
+        self.assertEqual(cfg.name, u"lxd")
         self.assertEqual(cfg.type, u"lxd")
         self.assertIsNone(cfg.endpoint)
         self.assertIsNone(cfg.auth_types)
@@ -365,8 +388,6 @@ class CloudConfigTest(unittest.TestCase):
             CloudConfig("", "lxd")
 
     def test_missing_type(self):
-        with self.assertRaises(ValueError):
-            CloudConfig("spam", None)
         with self.assertRaises(ValueError):
             CloudConfig("spam", "")
 

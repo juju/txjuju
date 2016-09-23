@@ -48,15 +48,16 @@ class Config(object):
 
 
 class ControllerConfig(
-        namedtuple("ControllerConfig",
-                   "name type cloud_name default_series admin_secret")):
+        namedtuple("ControllerConfig", "name cloud bootstrap")):
     """An encapsulation of the local configuration for a single controller."""
 
     DEFAULT_SERIES = "trusty"
 
-    def __new__(cls, name, type,
-                cloud_name=None, default_series=None, admin_secret=None):
-        """
+    @classmethod
+    def from_info(cls, name, type,
+                  cloud_name=None, default_series=None, admin_secret=None):
+        """Return a new controller config for the given info.
+
         @param name: The name of the controller.
         @param type: The controller's provider type.
         @param cloud_name: The name of the cloud (defaults to <name>-<type>).
@@ -65,39 +66,39 @@ class ControllerConfig(
         @param admin_secret: The password to use for the admin user,
             if any.
         """
-        name = unicode(name) if name else None
-        type = unicode(type) if type else None
-        if cloud_name is None:
+        if cloud_name is None and name and type:
             cloud_name = "{}-{}".format(name, type)
-        cloud_name = unicode(cloud_name) if cloud_name else None
-        if default_series is None:
-            default_series = cls.DEFAULT_SERIES
-        default_series = unicode(default_series) if default_series else None
-        admin_secret = unicode(admin_secret) if admin_secret else None
+        # TODO Sort these out as soon as we need them.
+        endpoint = auth_types = credentials = None
+        return cls(
+            name,
+            CloudConfig(cloud_name, type, endpoint, auth_types, credentials),
+            BootstrapConfig(default_series, admin_secret),
+            )
+
+    def __new__(cls, name, cloud, bootstrap=None):
+        """
+        @param name: The name of the controller.
+        @param cloud: The controller's cloud config.
+        @param bootstrap: The controller's bootstrap config, if any.
+        """
+        name = unicode(name) if name else None
+        cloud = CloudConfig._make(cloud) if cloud else None
+        if bootstrap is None:
+            bootstrap = BootstrapConfig("")
+        else:
+            bootstrap = BootstrapConfig._make(bootstrap)
         return super(ControllerConfig, cls).__new__(
-            cls, name, type, cloud_name, default_series, admin_secret)
+            cls, name, cloud, bootstrap)
 
     def __init__(self, *args, **kwargs):
         super(ControllerConfig, self).__init__(*args, **kwargs)
         if not self.name:
             raise ValueError("missing name")
-        if not self.type:
-            raise ValueError("missing type")
-        if not self.cloud_name:
-            raise ValueError("missing cloud_name")
-
-    @property
-    def cloud(self):
-        """The CloudConfig for this controller config."""
-        # TODO Sort these out as soon as we need them.
-        endpoint = auth_types = credentials = None
-        return CloudConfig(
-            self.cloud_name, self.type, endpoint, auth_types, credentials)
-
-    @property
-    def bootstrap(self):
-        """The BootstrapConfig for this controller config."""
-        return BootstrapConfig(self.default_series, self.admin_secret)
+        if not self.cloud:
+            raise ValueError("missing cloud")
+        if not self.bootstrap:
+            raise ValueError("missing bootstrap")
 
 
 class CloudConfig(
@@ -105,17 +106,19 @@ class CloudConfig(
                    "name type endpoint auth_types credentials")):
     """An encapsulation of the local config for a single cloud."""
 
-    def __new__(cls, name, type,
-                endpoint=None, auth_types=None, credentials=None):
+    def __new__(cls, name, type=None, endpoint=None,
+                auth_types=None, credentials=None):
         """
         @param name: The cloud's user-defined ID.
-        @param type: The provider type.
+        @param type: The provider type (defaults to the name).
         @param endpoint: The endpoint to use, if needed.
         @param auth_types: The set of supported auth types, if needed.
         @param credentials: The set of credentials configured
             for this cloud, if any.
         """
         name = unicode(name) if name else None
+        if type is None:
+            type = name
         type = unicode(type) if type else None
         endpoint = unicode(endpoint) if endpoint else None
         # TODO Add provider-specific abstractions to support auth_types?

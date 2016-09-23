@@ -41,10 +41,10 @@ class Writer(object):
         @param env: A JujuControllerConfig to serialize for Juju 1.x.
         """
         config = {
-            "type": env.type,
+            "type": env.cloud.type,
             }
-        if env.default_series:
-            config["default-series"] = env.default_series
-        if env.admin_secret:
-            config["admin-secret"] = env.admin_secret
+        if env.bootstrap.default_series:
+            config["default-series"] = env.bootstrap.default_series
+        if env.bootstrap.admin_secret:
+            config["admin-secret"] = env.bootstrap.admin_secret
         return config
