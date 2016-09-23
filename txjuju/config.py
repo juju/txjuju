@@ -142,6 +142,8 @@ class BootstrapConfig(
         @param admin_secret: The password to use for the admin user,
             if any.
         """
+        if default_series is None:
+            default_series = cls.DEFAULT_SERIES
         return super(BootstrapConfig, cls).__new__(
             default_series, admin_secret)
 
