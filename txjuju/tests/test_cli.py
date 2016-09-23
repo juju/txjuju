@@ -1,14 +1,50 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
-import os
 import json
+import os
+import unittest
 
 import yaml
 from mocker import MockerTestCase
 from twisted.internet.defer import inlineCallbacks
 
-from txjuju.cli import Juju1CLI, Juju2CLI, CLIError
+from txjuju import config
+from txjuju.cli import Juju1CLI, Juju2CLI, BootstrapSpec
+from txjuju.errors import CLIError
 from txjuju.testing import TwistedTestCase
+
+
+class TestBootstrapSpec(unittest.TestCase):
+
+    def test_full(self):
+        spec = BootstrapSpec("my-env", "lxd", "xenial", "pw")
+
+        self.assertEqual(spec.name, "my-env")
+        self.assertEqual(spec.type, "lxd")
+        self.assertEqual(spec.default_series, "xenial")
+        self.assertEqual(spec.admin_secret, "pw")
+
+    def test_minimal(self):
+        spec = BootstrapSpec("my-env", "lxd")
+
+        self.assertEqual(spec.name, "my-env")
+        self.assertEqual(spec.type, "lxd")
+        self.assertEqual(spec.default_series, "trusty")
+        self.assertIsNone(spec.admin_secret)
+
+    def test_config(self):
+        spec = BootstrapSpec("my-env", "lxd", "xenial", "pw")
+        cfg = spec.config()
+
+        self.assertEqual(len(cfg.controllers), 1)
+        self.assertEqual(
+            cfg.controllers[0],
+            config.ControllerConfig(
+                "my-env",
+                config.CloudConfig("my-env-lxd", "lxd"),
+                config.BootstrapConfig("xenial", "pw"),
+                ),
+            )
 
 
 class Juju1CLITest(TwistedTestCase, MockerTestCase):

@@ -17,6 +17,11 @@ class Config(object):
         """
         self._controllers = controllers
 
+    @property
+    def controllers(self):
+        """Return the controller configs."""
+        return list(self._controllers)
+
     def write(self, cfgdir, version, clobber=False):
         """Save the config to disk.
 

@@ -41,15 +41,13 @@ class BootstrapSpec(object):
 
     def config(self):
         """Return the JujuConfig corresponding to this spec."""
-        cloud_name = self.type
-        controller = config.JujuControllerConfig.from_info(
+        controller = config.ControllerConfig.from_info(
             self.name,
             self.type,
-            cloud_name,
-            self.default_series,
-            self.admin_secret,
+            default_series=self.default_series,
+            admin_secret=self.admin_secret,
             )
-        return config.JujuConfig(controller)
+        return config.Config(controller)
 
 
 class Juju1CLI(object):
