@@ -1,6 +1,10 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
 from collections import namedtuple
+import os
+import os.path
+
+from . import _config1, _config2
 
 
 class Config(object):
@@ -12,6 +16,35 @@ class Config(object):
             controllers in the local configuration.
         """
         self._controllers = controllers
+
+    def write(self, cfgdir, version, clobber=False):
+        """Save the config to disk.
+
+        How this happens is version-specific.
+
+        @param cfgdir: The "juju home" directory where config files
+            are stored.
+        @param version: The Juju version to target.
+        @param clobber: Allow the config's files to already exist.
+
+        The filenames of the bootstrap configs are returned.  If the
+        Juju version doesn't use a bootstrap config then this returns
+        None.
+        """
+        if version.startswith("1."):
+            writer = _config1.Writer()
+        elif version.startswith("2."):
+            writer = _config2.Writer()
+        else:
+            raise RuntimeError("unsupported Juju version {!r}".format(version))
+
+        if clobber:
+            _prepare_cfgdir(cfgdir)
+        else:
+            filenames = writer.filenames(self._controllers)
+            _prepare_cfgdir(cfgdir, filenames)
+
+        return writer.write(self._controllers, cfgdir)
 
 
 class ControllerConfig(
@@ -148,3 +181,21 @@ class BootstrapConfig(
         admin_secret = unicode(admin_secret) if admin_secret else None
         return super(BootstrapConfig, cls).__new__(
             cls, default_series, admin_secret)
+
+
+def _prepare_cfgdir(cfgdir, protect_filenames=None):
+    """Create the config directory, if necessary.
+
+    @param cfgdir: The "juju home" directory where config files
+        are stored.
+    @param protect_filenames: The files that should not be clobbered.
+    """
+    if not os.path.exists(cfgdir):
+        os.makedirs(cfgdir)
+        return
+
+    for filename in protect_filenames or ():
+        filename = os.path.join(cfgdir, filename)
+        if os.path.exists(filename):
+            msg = "config file {!r} already exists".format(filename)
+            raise RuntimeError(msg)

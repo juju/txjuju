@@ -1,9 +1,272 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
+import os
+import os.path
+import shutil
+import tempfile
 import unittest
 
+import yaml
+
 from txjuju.config import (
-    ControllerConfig, CloudConfig, BootstrapConfig)
+    Config, ControllerConfig, CloudConfig, BootstrapConfig)
+
+
+class _ConfigTest(object):
+
+    def setUp(self):
+        super(_ConfigTest, self).setUp()
+        self.cfgdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.cfgdir)
+        super(_ConfigTest, self).tearDown()
+
+    def assert_cfgfile(self, filename, expected):
+        filename = os.path.join(self.cfgdir, filename)
+        with open(filename) as cfgfile:
+            data = yaml.load(cfgfile)
+        self.assertEqual(data, expected)
+
+
+class ConfigTest(_ConfigTest, unittest.TestCase):
+
+    # The version doesn't matter as long as it's consistent.
+    version = "1.25.6"
+
+    def populate_cfgdir(self, name):
+        controller = ControllerConfig.from_info(
+            name, "lxd", "my-lxd", "xenial", "pw")
+        cfg = Config(controller)
+        cfg.write(self.cfgdir, self.version)
+
+    def test_write_cfgdir_missing(self):
+        cfgdir = os.path.join(self.cfgdir, "one", "two", "three")
+        cfg = Config(ControllerConfig("eggs", CloudConfig("maas")))
+        cfg.write(cfgdir, self.version, clobber=True)
+
+        self.assertEqual(os.listdir(cfgdir), ["environments.yaml"])
+
+    def test_write_clobber_collision(self):
+        self.populate_cfgdir("spam")
+        cfg = Config(ControllerConfig(
+            "eggs", CloudConfig("maas"), BootstrapConfig("")))
+        cfg.write(self.cfgdir, self.version, clobber=True)
+
+        self.assert_cfgfile(
+            "environments.yaml",
+            {"environments": {"eggs": {"type": "maas"}}})
+
+    def test_write_clobber_no_collision(self):
+        cfg = Config(ControllerConfig("eggs", CloudConfig("maas")))
+        cfg.write(self.cfgdir, self.version, clobber=True)
+
+        self.assertEqual(os.listdir(self.cfgdir), ["environments.yaml"])
+
+    def test_write_no_clobber_collision(self):
+        self.populate_cfgdir("spam")
+        cfg = Config(ControllerConfig("eggs", CloudConfig("maas")))
+
+        with self.assertRaises(RuntimeError):
+            cfg.write(self.cfgdir, self.version, clobber=False)
+        self.assert_cfgfile(
+            "environments.yaml",
+            {"environments": {
+                "spam": {
+                    "type": "lxd",
+                    "default-series": "xenial",
+                    "admin-secret": "pw",
+                    }
+                }
+             })
+
+    def test_write_no_clobber_no_collision(self):
+        cfg = Config(ControllerConfig("eggs", CloudConfig("maas")))
+        cfg.write(self.cfgdir, self.version, clobber=False)
+
+        self.assertEqual(os.listdir(self.cfgdir), ["environments.yaml"])
+
+
+class ConfigTest_Juju1(_ConfigTest, unittest.TestCase):
+
+    VERSION = "1.25.6"
+
+    def test_write_one_full(self):
+        cfg = Config(ControllerConfig.from_info(
+            "spam", "lxd", "my-lxd", "xenial", "pw"))
+        bootstraps = cfg.write(self.cfgdir, self.VERSION)
+
+        self.assertIsNone(bootstraps)
+        self.assertEqual(os.listdir(self.cfgdir), ["environments.yaml"])
+        self.assert_cfgfile(
+            "environments.yaml",
+            {"environments": {
+                "spam": {
+                    "type": "lxd",
+                    "default-series": "xenial",
+                    "admin-secret": "pw",
+                    }
+                }
+             })
+
+    def test_write_one_minimal(self):
+        cfg = Config(
+            ControllerConfig.from_info("spam", "lxd", "my-lxd", "", ""))
+        bootstraps = cfg.write(self.cfgdir, self.VERSION)
+
+        self.assertIsNone(bootstraps)
+        self.assertEqual(os.listdir(self.cfgdir), ["environments.yaml"])
+        self.assert_cfgfile(
+            "environments.yaml",
+            {"environments": {
+                "spam": {
+                    "type": "lxd",
+                    }
+                }
+             })
+
+    def test_write_multiple(self):
+        cfg = Config(
+            ControllerConfig.from_info(
+                "spam", "lxd", "my-lxd", "xenial", "sekret"),
+            ControllerConfig.from_info(
+                "eggs", "maas", "maas", "trusty", "pw"),
+            )
+        bootstraps = cfg.write(self.cfgdir, self.VERSION)
+
+        self.assertIsNone(bootstraps)
+        self.assertEqual(os.listdir(self.cfgdir), ["environments.yaml"])
+        self.assert_cfgfile(
+            "environments.yaml",
+            {"environments": {
+                "spam": {
+                    "type": "lxd",
+                    "default-series": "xenial",
+                    "admin-secret": "sekret",
+                    },
+                "eggs": {
+                    "type": "maas",
+                    "default-series": "trusty",
+                    "admin-secret": "pw",
+                    }
+                }
+             })
+
+    def test_write_none(self):
+        cfg = Config()
+        bootstraps = cfg.write(self.cfgdir, self.VERSION)
+
+        self.assertIsNone(bootstraps)
+        self.assertEqual(os.listdir(self.cfgdir), ["environments.yaml"])
+        self.assert_cfgfile("environments.yaml", {})
+
+
+class ConfigTest_Juju2(_ConfigTest, unittest.TestCase):
+
+    VERSION = "2.0.0"
+
+    def test_write_one_full(self):
+        cfg = Config(ControllerConfig.from_info(
+            "spam", "lxd", "my-lxd", "xenial", "pw"))
+        bootstraps = cfg.write(self.cfgdir, self.VERSION)
+
+        self.assertEquals(
+            bootstraps,
+            {"spam": os.path.join(self.cfgdir, "bootstrap-spam.yaml"),
+             })
+        self.assertEqual(
+            sorted(os.listdir(self.cfgdir)),
+            ["bootstrap-spam.yaml",
+             "clouds.yaml",
+             "credentials.yaml",
+             ])
+        self.assert_cfgfile(
+            "bootstrap-spam.yaml",
+            {"default-series": "xenial",
+             })
+        self.assert_cfgfile(
+            "clouds.yaml",
+            {"clouds": {"my-lxd": {
+                "type": "lxd",
+                }}})
+        self.assert_cfgfile("credentials.yaml", {"credentials": {}})
+
+    def test_write_one_minimal(self):
+        cfg = Config(ControllerConfig.from_info(
+            "spam", "lxd", "my-lxd", "", ""))
+        bootstraps = cfg.write(self.cfgdir, self.VERSION)
+
+        self.assertEquals(
+            bootstraps,
+            {"spam": os.path.join(self.cfgdir, "bootstrap-spam.yaml"),
+             })
+        self.assertEqual(
+            sorted(os.listdir(self.cfgdir)),
+            ["bootstrap-spam.yaml",
+             "clouds.yaml",
+             "credentials.yaml",
+             ])
+        self.assert_cfgfile("bootstrap-spam.yaml", {})
+        self.assert_cfgfile(
+            "clouds.yaml",
+            {"clouds": {"my-lxd": {
+                "type": "lxd",
+                }}})
+        self.assert_cfgfile("credentials.yaml", {"credentials": {}})
+
+    def test_write_multiple(self):
+        cfg = Config(
+            ControllerConfig.from_info(
+                "spam", "lxd", "my-lxd", "xenial", "sekret"),
+            ControllerConfig.from_info(
+                "eggs", "maas", "maas", "trusty", "pw"),
+            )
+        bootstraps = cfg.write(self.cfgdir, self.VERSION)
+
+        self.assertEquals(
+            bootstraps,
+            {"spam": os.path.join(self.cfgdir, "bootstrap-spam.yaml"),
+             "eggs": os.path.join(self.cfgdir, "bootstrap-eggs.yaml"),
+             })
+        self.assertEqual(
+            sorted(os.listdir(self.cfgdir)),
+            ["bootstrap-eggs.yaml",
+             "bootstrap-spam.yaml",
+             "clouds.yaml",
+             "credentials.yaml",
+             ])
+        self.assert_cfgfile(
+            "bootstrap-eggs.yaml",
+            {"default-series": "trusty",
+             })
+        self.assert_cfgfile(
+            "bootstrap-spam.yaml",
+            {"default-series": "xenial",
+             })
+        self.assert_cfgfile(
+            "clouds.yaml",
+            {"clouds": {
+                "my-lxd": {
+                    "type": "lxd",
+                    },
+                "maas": {
+                    "type": "maas",
+                    },
+                },
+             })
+        self.assert_cfgfile("credentials.yaml", {"credentials": {}})
+
+    def test_write_none(self):
+        cfg = Config()
+        bootstraps = cfg.write(self.cfgdir, self.VERSION)
+
+        self.assertEqual(bootstraps, {})
+        self.assertEqual(
+            sorted(os.listdir(self.cfgdir)),
+            ["clouds.yaml", "credentials.yaml"],
+            )
+        self.assert_cfgfile("clouds.yaml", {"clouds": {}})
+        self.assert_cfgfile("credentials.yaml", {"credentials": {}})
 
 
 class ControllerConfigTest(unittest.TestCase):
