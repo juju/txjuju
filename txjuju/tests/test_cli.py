@@ -9,7 +9,7 @@ from mocker import MockerTestCase
 from twisted.internet.defer import inlineCallbacks
 
 from txjuju import config
-from txjuju.cli import Juju1CLI, Juju2CLI, BootstrapSpec
+from txjuju.cli import Juju1CLI, Juju2CLI, BootstrapSpec, APIInfo
 from txjuju.errors import CLIError
 from txjuju.testing import TwistedTestCase
 
@@ -45,6 +45,54 @@ class TestBootstrapSpec(unittest.TestCase):
                 config.BootstrapConfig("xenial", "pw"),
                 ),
             )
+
+
+class TestAPIInfo(unittest.TestCase):
+
+    def test_full(self):
+        endpoints = (u"host2", u"host1")
+        info = APIInfo(endpoints, u"admin", u"pw", u"some-uuid")
+
+        self.assertEqual(info.endpoints, (u"host2", u"host1"))
+        self.assertEqual(info.user, u"admin")
+        self.assertEqual(info.password, u"pw")
+        self.assertEqual(info.model_uuid, u"some-uuid")
+
+    def test_minimal(self):
+        endpoints = (u"host",)
+        info = APIInfo(endpoints, u"admin", u"pw")
+
+        self.assertEqual(info.endpoints, (u"host",))
+        self.assertEqual(info.user, u"admin")
+        self.assertEqual(info.password, u"pw")
+        self.assertIsNone(info.model_uuid)
+
+    def test_conversion(self):
+        endpoints = ["host2", "host1"]
+        info = APIInfo(endpoints, "admin", "pw", "some-uuid")
+
+        self.assertEqual(info.endpoints, (u"host2", u"host1"))
+        self.assertEqual(info.user, u"admin")
+        self.assertEqual(info.password, u"pw")
+        self.assertEqual(info.model_uuid, u"some-uuid")
+
+    def test_missing_endpoints(self):
+        with self.assertRaises(ValueError):
+            APIInfo(None, "admin", "pw")
+        with self.assertRaises(ValueError):
+            APIInfo([], "admin", "pw")
+
+    def test_missing_user(self):
+        with self.assertRaises(ValueError):
+            APIInfo(["host"], None, "pw")
+        with self.assertRaises(ValueError):
+            APIInfo(["host"], "", "pw")
+
+    def test_missing_password(self):
+        with self.assertRaises(ValueError):
+            APIInfo(["host"], "admin", None)
+        with self.assertRaises(ValueError):
+            APIInfo(["host"], "admin", "")
 
 
 class Juju1CLITest(TwistedTestCase, MockerTestCase):

@@ -1,9 +1,10 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
-from cStringIO import StringIO
 import json
 import os
 import os.path
+from collections import namedtuple
+from cStringIO import StringIO
 
 import yaml
 from yaml import Loader
@@ -48,6 +49,37 @@ class BootstrapSpec(object):
             admin_secret=self.admin_secret,
             )
         return config.Config(controller)
+
+
+class APIInfo(namedtuple("APIInfo", "endpoints user password model_uuid")):
+    """The API information provided by the Juju CLI."""
+
+    def __new__(cls, endpoints, user, password, model_uuid=None):
+        """
+        @param endpoints: The Juju server's API root endpoints.
+        @param user: The Juju user with which to connect.
+        @param password: The user's password.
+        @param model_uuid: The UUID of the model to manage via the API.
+            If this is None then only controller-level API facades
+            should be used.
+        """
+        if endpoints:
+            endpoints = tuple(unicode(ep) for ep in endpoints)
+        else:
+            endpoints = None
+        user = unicode(user) if user else None
+        password = unicode(password) if password else None
+        model_uuid = unicode(model_uuid) if model_uuid else None
+        return super(APIInfo, cls).__new__(
+            cls, endpoints, user, password, model_uuid)
+
+    def __init__(self, *args, **kwargs):
+        if not self.endpoints:
+            raise ValueError("missing endpoints")
+        if not self.user:
+            raise ValueError("missing user")
+        if not self.password:
+            raise ValueError("missing password")
 
 
 class Juju1CLI(object):
