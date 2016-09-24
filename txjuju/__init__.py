@@ -24,6 +24,24 @@ def get_cli_class(release=JUJU1):
         raise ValueError("unsupported release {!r}".format(release))
 
 
+def prepare_for_bootstrap(spec, version, cfgdir):
+    """Return the bootstrap config filename after creating configs.
+
+    Note that not all Juju versions have a bootstrap config.  In that
+    case None will be returned.
+
+    @param spec: The txjuju.cli.BootstrapSpec for which to prepare.
+    @param version: The Juju version to prepare for.
+    @param cfgdir: The Juju config directory to use.
+    """
+    # For now we don't bother with config files for 2.x.
+    if version.startswith("2."):
+        return None
+    cfg = spec.config()
+    filenames = cfg.write(cfgdir, version)
+    return filenames.get(spec.name) if filenames else None
+
+
 # Appease pyflakes
 (CLIError, APIRequestError, APIAuthError, APIRetriableError,
     AllWatcherStoppedError, InvalidAPIEndpointAddress)
