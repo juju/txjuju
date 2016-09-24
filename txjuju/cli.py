@@ -45,6 +45,7 @@ class BootstrapSpec(object):
         controller = config.ControllerConfig.from_info(
             self.name,
             self.type,
+            cloud_name=self.type,
             default_series=self.default_series,
             admin_secret=self.admin_secret,
             )

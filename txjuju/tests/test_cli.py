@@ -41,7 +41,7 @@ class TestBootstrapSpec(unittest.TestCase):
             cfg.controllers[0],
             config.ControllerConfig(
                 "my-env",
-                config.CloudConfig("my-env-lxd", "lxd"),
+                config.CloudConfig("lxd", "lxd"),
                 config.BootstrapConfig("xenial", "pw"),
                 ),
             )
