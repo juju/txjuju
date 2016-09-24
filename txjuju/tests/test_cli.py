@@ -8,10 +8,47 @@ import yaml
 from mocker import MockerTestCase
 from twisted.internet.defer import inlineCallbacks
 
-from txjuju import config
-from txjuju.cli import Juju1CLI, Juju2CLI, BootstrapSpec, APIInfo
+from txjuju import config, _utils
+from txjuju.cli import (
+    Juju1CLI, Juju2CLI, BootstrapSpec, APIInfo, get_executable)
 from txjuju.errors import CLIError
 from txjuju.testing import TwistedTestCase
+
+
+class GetExecutableTests(unittest.TestCase):
+
+    class CLI(object):
+        CFGDIR_ENVVAR = "JUJU_HOME"
+
+    def test_full(self):
+        exe = get_executable("spam", self.CLI, "/tmp", {"SPAM": "eggs"})
+
+        self.assertEqual(
+            exe,
+            _utils.Executable("spam", {"SPAM": "eggs", "JUJU_HOME": "/tmp"}))
+
+    def test_minimal(self):
+        exe = get_executable("spam", self.CLI, "/tmp")
+
+        self.assertEqual(exe.filename, "spam")
+        self.assertEqual(exe.envvars["JUJU_HOME"], "/tmp")
+        self.assertNotEqual(exe.envvars, {"JUJU_HOME": "/tmp"})
+
+    def test_missing_filename(self):
+        with self.assertRaises(ValueError):
+            get_executable("", self.CLI, "/tmp")
+        with self.assertRaises(ValueError):
+            get_executable(None, self.CLI, "/tmp")
+
+    def test_missing_version_cli(self):
+        with self.assertRaises(ValueError):
+            get_executable("spam", None, "/tmp")
+
+    def test_missing_cfgdir(self):
+        with self.assertRaises(ValueError):
+            get_executable("spam", self.CLI, None)
+        with self.assertRaises(ValueError):
+            get_executable("spam", self.CLI, "")
 
 
 class TestBootstrapSpec(unittest.TestCase):

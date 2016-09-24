@@ -14,8 +14,29 @@ from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 from twisted.internet.protocol import ProcessProtocol
 from twisted.python import log
 
-from . import config
+from . import config, _utils
 from .errors import CLIError
+
+
+def get_executable(filename, version_cli, cfgdir, envvars=None):
+    """Return the Executable for the given juju binary.
+
+    @param filename: The path to the juju binary.
+    @param version_cli: The version-specific JujuXCLI to use.
+    @param cfgdir: The Juju config dir to use.
+    @param envvars: The additional environment variables to use.
+    """
+    if not version_cli:
+        raise ValueError("missing version_cli")
+    if not cfgdir:
+        raise ValueError("missing cfgdir")
+
+    if envvars is None:
+        envvars = os.environ
+    envvars = dict(envvars)
+    envvars[version_cli.CFGDIR_ENVVAR] = cfgdir
+
+    return _utils.Executable(filename, envvars)
 
 
 class BootstrapSpec(object):
