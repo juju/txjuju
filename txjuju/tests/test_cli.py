@@ -3,6 +3,9 @@
 from collections import namedtuple
 import json
 import os
+import os.path
+import shutil
+import tempfile
 import unittest
 
 import yaml
@@ -11,9 +14,9 @@ from twisted.internet.defer import inlineCallbacks
 
 from txjuju import config, _utils
 from txjuju.cli import (
-    Juju1CLI, Juju2CLI, BootstrapSpec, APIInfo, get_executable)
+    CLI, Juju1CLI, Juju2CLI, BootstrapSpec, APIInfo, get_executable)
 from txjuju.errors import CLIError
-from txjuju.testing import TwistedTestCase
+from txjuju.testing import TwistedTestCase, StubExecutable, write_script
 
 
 class GetExecutableTest(unittest.TestCase):
@@ -271,6 +274,331 @@ class APIInfoTest(unittest.TestCase):
         info = APIInfo(["host2", "host1"], "admin", "pw")
 
         self.assertEqual(info.address, "host2")
+
+
+class CLITests(unittest.TestCase):
+
+    def setUp(self):
+        super(CLITests, self).setUp()
+        self.calls = []
+        self.exe = StubExecutable(self.calls)
+        self.version_cli = StubJujuXCLI(self.calls)
+
+    def test_from_version_missing_filename(self):
+        with self.assertRaises(ValueError):
+            CLI.from_version(None, "1.25.6", "/tmp")
+        with self.assertRaises(ValueError):
+            CLI.from_version("", "1.25.6", "/tmp")
+
+    def test_from_version_missing_version(self):
+        with self.assertRaises(ValueError):
+            CLI.from_version("juju", None, "/tmp")
+        with self.assertRaises(ValueError):
+            CLI.from_version("juju", "", "/tmp")
+
+    def test_from_version_unsupported_version(self):
+        with self.assertRaises(ValueError):
+            CLI.from_version("juju", "1.25.6", None)
+        with self.assertRaises(ValueError):
+            CLI.from_version("juju", "1.25.6", "")
+
+    def test_missing_executable(self):
+        version_cli = object()
+        with self.assertRaises(ValueError):
+            CLI(None, version_cli)
+
+    def test_missing_version_cli(self):
+        class cli(object):
+            CFGDIR_ENVVAR = "JUJU_HOME"
+
+        exe = get_executable("juju", cli, "/tmp")
+        with self.assertRaises(ValueError):
+            CLI(exe, None)
+
+    def test_bootstrap_full(self):
+        self.version_cli.return_get_bootstrap_args = ["sub"]
+        cli = CLI(self.exe, self.version_cli)
+        spec = BootstrapSpec("spam", "lxd")
+        cli.bootstrap(spec, "0", "bootstrap.yaml", True, True, True)
+
+        self.assertEqual(self.calls, [
+            ("get_bootstrap_args",
+             (spec, "0", "bootstrap.yaml", True, True, True), {}),
+            ("run", ("sub",), {}),
+            ])
+
+    def test_bootstrap_minimal(self):
+        self.version_cli.return_get_bootstrap_args = ["sub"]
+        cli = CLI(self.exe, self.version_cli)
+        spec = BootstrapSpec("spam", "lxd")
+        cli.bootstrap(spec)
+
+        self.assertEqual(self.calls, [
+            ("get_bootstrap_args",
+             (spec, None, None, False, False, False), {}),
+            ("run", ("sub",), {}),
+            ])
+
+    def test_api_info_full(self):
+        self.version_cli.return_get_api_info_args = ["sub"]
+        self.exe.return_run_out = "<output>"
+        expected = APIInfo(["host"], "admin", "pw")
+        self.version_cli.return_parse_api_info = {"spam": expected._asdict()}
+        cli = CLI(self.exe, self.version_cli)
+        info = cli.api_info("spam")
+
+        self.assertEqual(info, {"spam": expected})
+        self.assertEqual(self.calls, [
+            ("get_api_info_args", ("spam",), {}),
+            ("run_out", ("sub",), {}),
+            ("parse_api_info", ("<output>", "spam"), {}),
+            ])
+
+    def test_api_info_minimal(self):
+        self.version_cli.return_get_api_info_args = ["sub"]
+        self.exe.return_run_out = "<output>"
+        expected = APIInfo(["host"], "admin", "pw")
+        self.version_cli.return_parse_api_info = {"spam": expected._asdict()}
+        cli = CLI(self.exe, self.version_cli)
+        info = cli.api_info()
+
+        self.assertEqual(info, {"spam": expected})
+        self.assertEqual(self.calls, [
+            ("get_api_info_args", (None,), {}),
+            ("run_out", ("sub",), {}),
+            ("parse_api_info", ("<output>", None), {}),
+            ])
+
+    def test_destroy_controller_full(self):
+        self.version_cli.return_get_destroy_controller_args = ["sub"]
+        cli = CLI(self.exe, self.version_cli)
+        cli.destroy_controller("spam", True)
+
+        self.assertEqual(self.calls, [
+            ("get_destroy_controller_args", ("spam", True), {}),
+            ("run", ("sub",), {}),
+            ])
+
+    def test_destroy_controller_minimal(self):
+        self.version_cli.return_get_destroy_controller_args = ["sub"]
+        cli = CLI(self.exe, self.version_cli)
+        cli.destroy_controller()
+
+        self.assertEqual(self.calls, [
+            ("get_destroy_controller_args", (None, False), {}),
+            ("run", ("sub",), {}),
+            ])
+
+
+class StubJujuXCLI(object):
+
+    def __init__(self, calls=None):
+        if calls is None:
+            calls = []
+        self.calls = calls
+
+        self.return_get_bootstrap_args = None
+        self.return_get_api_info_args = None
+        self.return_parse_api_info = None
+        self.return_get_destroy_controller_args = None
+
+    def get_bootstrap_args(self, spec, to=None, cfgfile=None,
+                           verbose=False, gui=False, autoupgrade=False):
+        self.calls.append(
+            ("get_bootstrap_args",
+             (spec, to, cfgfile, verbose, gui, autoupgrade), {}))
+        return self.return_get_bootstrap_args
+
+    def get_api_info_args(self, controller_name=None):
+        self.calls.append(
+            ("get_api_info_args", (controller_name,), {}))
+        return self.return_get_api_info_args
+
+    def parse_api_info(self, output, controller_name=None):
+        self.calls.append(
+            ("parse_api_info", (output, controller_name), {}))
+        return self.return_parse_api_info
+
+    def get_destroy_controller_args(self, name=None, force=False):
+        self.calls.append(
+            ("get_destroy_controller_args", (name, force), {}))
+        return self.return_get_destroy_controller_args
+
+
+class CLIJuju1Tests(unittest.TestCase):
+
+    VERSION = "1.25.6"
+
+    API_INFO_JSON = """\
+{
+    "state-servers": ["[fd1e:9828:924e:a48:216:3eff:fe7f:8125]:17070", "10.235.227.251:17070"],
+    "user": "admin",
+    "password": "0f154812dd1c02973623c887b2565ea3",
+    "environ-uuid": "d3a5befc-c392-4722-85fc-631531e74a09"
+}
+"""
+
+    def setUp(self):
+        super(CLIJuju1Tests, self).setUp()
+        self.dirname = tempfile.mkdtemp(prefix="txjuju-test-")
+        filename, self.callfile = write_script(self.dirname)
+        self.cli = CLI.from_version(filename, self.VERSION, self.dirname)
+
+    def tearDown(self):
+        shutil.rmtree(self.dirname)
+        super(CLIJuju1Tests, self).tearDown()
+
+    def assert_called(self, args, callfile=None):
+        if callfile is None:
+            callfile = self.callfile
+        with open(callfile) as file:
+            called = file.read().strip()
+        self.assertEqual(called, args)
+
+    def test_bootstrap_full(self):
+        spec = BootstrapSpec("spam", "lxd")
+        self.cli.bootstrap(spec, "0", None, True, True, True)
+
+        self.assert_called("bootstrap -v --to 0 -e spam")
+
+    def test_bootstrap_minimal(self):
+        spec = BootstrapSpec("spam", "lxd")
+        self.cli.bootstrap(spec)
+
+        self.assert_called("bootstrap --no-auto-upgrade -e spam")
+
+    def test_api_info_full(self):
+        filename, callfile = write_script(
+            self.dirname, output=self.API_INFO_JSON)
+        self.cli = CLI.from_version(filename, self.VERSION, self.dirname)
+        info = self.cli.api_info("spam")
+
+        self.assert_called(
+            "api-info --password --refresh --format=json -e spam", callfile)
+
+    def test_api_info_minimal(self):
+        filename, callfile = write_script(
+            self.dirname, output=self.API_INFO_JSON)
+        self.cli = CLI.from_version(filename, self.VERSION, self.dirname)
+        info = self.cli.api_info()
+
+        self.assert_called(
+            "api-info --password --refresh --format=json", callfile)
+
+    def test_destroy_controller_full(self):
+        self.cli.destroy_controller("spam", True)
+
+        self.assert_called("destroy-environment --yes --force spam")
+
+    def test_destroy_controller_minimal(self):
+        self.cli.destroy_controller()
+
+        self.assert_called("destroy-environment --yes")
+
+
+class CLIJuju2Tests(unittest.TestCase):
+
+    VERSION = "2.0.0"
+
+    API_INFO_YAML = """\
+spam:
+  details:
+    uuid: d3a5befc-c392-4722-85fc-631531e74a09
+    api-endpoints: ['[fd1e:9828:924e:a48:216:3eff:fe7f:8125]:17070', '10.235.227.251:17070']
+    ca-cert: |
+      -----BEGIN CERTIFICATE-----
+      MIIDzTCCArWgAwIBAgIUFnfJGYpNsh6YEHcLV6Nz1tvlAfUwDQYJKoZIhvcNAQEL
+      BQAwbjENMAsGA1UEChMEanVqdTEuMCwGA1UEAwwlanVqdS1nZW5lcmF0ZWQgQ0Eg
+      Zm9yIG1vZGVsICJqdWp1LWNhIjEtMCsGA1UEBRMkMDFhOTYzMTctOWQ2Mi00Yzk5
+      LTg4NGYtYzRkZDA2NzI2ZjhhMB4XDTE2MDkxNDIyNTEyM1oXDTI2MDkyMTIyNTEy
+      M1owbjENMAsGA1UEChMEanVqdTEuMCwGA1UEAwwlanVqdS1nZW5lcmF0ZWQgQ0Eg
+      Zm9yIG1vZGVsICJqdWp1LWNhIjEtMCsGA1UEBRMkMDFhOTYzMTctOWQ2Mi00Yzk5
+      LTg4NGYtYzRkZDA2NzI2ZjhhMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKC
+      AQEAkacXPhuKhluVFocqUu4xVkjmMweBw32nxu3uX7ZbJeFjMvSXZ8i1dww3RSpc
+      LyYWHJr7/58tnx7vK6GGwuUYPSDH4jr3vvhHNwCH7SKQpKa1L6Um2yU/49ovrEsH
+      Hv4GtZa8yJtPgnXlyw2IPiMdSFM29jSFGFDu18RxUqbOEqomF6juCAx0PixSx3gO
+      u35TvSQ9eeZ+Sr9Pec+zQfd/Q7Ro0xX4eccx0hdYYROqkIr1qhLpC9iWskKpA3+6
+      B00fq6h66wFVNwzRd8lC9M3xu3LnTgFzGovLsFc7V15PYknbtjQBKMKfJmr4Clda
+      jHijadDjRO+v73ijTHRt4EiyTQIDAQABo2MwYTAOBgNVHQ8BAf8EBAMCAqQwDwYD
+      VR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQU1qttJZQOmmIiR/oKYuDuRJz1LaUwHwYD
+      VR0jBBgwFoAU1qttJZQOmmIiR/oKYuDuRJz1LaUwDQYJKoZIhvcNAQELBQADggEB
+      AIHzvq0dG7ToJRzkuy17GDrGqXgx40NtaIM17pkVlVVFr/HF+t5KiYTwXDVmUk20
+      vhodAGe9HDkqHe0jVqa/Jxfv+ixoBOv1zUr4c5LWvhcIiwqR2hN5YjdUZ+0jqOis
+      zFAqt3pZt1BIFtGwkiYNhpqbtaiasRAaKbBk+SW3a3DJ357l7jL7O1AZin83UN4H
+      ZhH6f3cKg7Rw8De+iwo1+UGZFjFH7VcVevh4W91OkB1vTZJimH/5clxchARO452T
+      7KOzQ5vGEZoOZNckSQAErbROJrKXRDscCrIlJrBO8sQczjptkC38wtCbsDbgmkIV
+      4Ssxa580yFLWxzcuhlJBpEo=
+      -----END CERTIFICATE-----
+    cloud: lxd
+    region: localhost
+  models:
+    admin@local/controller:
+      uuid: d3a5befc-c392-4722-85fc-631531e74a09
+    admin@local/default:
+      uuid: b93f17f2-ad56-456d-8051-06e9f7ba46ec
+  current-model: admin@local/default
+  account:
+    user: admin@local
+    password: 0f154812dd1c02973623c887b2565ea3
+"""
+
+    def setUp(self):
+        super(CLIJuju2Tests, self).setUp()
+        self.dirname = tempfile.mkdtemp(prefix="txjuju-test-")
+        filename, self.callfile = write_script(self.dirname)
+        self.cli = CLI.from_version(filename, self.VERSION, self.dirname)
+
+    def tearDown(self):
+        shutil.rmtree(self.dirname)
+        super(CLIJuju2Tests, self).tearDown()
+
+    def assert_called(self, args, callfile=None):
+        if callfile is None:
+            callfile = self.callfile
+        with open(callfile) as file:
+            called = file.read().strip()
+        self.assertEqual(called, args)
+
+    def test_bootstrap_full(self):
+        spec = BootstrapSpec("spam", "lxd")
+        self.cli.bootstrap(spec, "0", "bootstrap.yaml", True, True, True)
+
+        self.assert_called(
+            "bootstrap -v --to 0 --config bootstrap.yaml spam lxd")
+
+    def test_bootstrap_minimal(self):
+        spec = BootstrapSpec("spam", "lxd")
+        self.cli.bootstrap(spec)
+
+        self.assert_called("bootstrap --no-auto-upgrade --no-gui spam lxd")
+
+    def test_api_info_full(self):
+        filename, callfile = write_script(
+            self.dirname, output=self.API_INFO_YAML)
+        self.cli = CLI.from_version(filename, self.VERSION, self.dirname)
+        info = self.cli.api_info("spam")
+
+        self.assert_called(
+            "show-controller --show-password --format=yaml spam", callfile)
+
+    def test_api_info_minimal(self):
+        filename, callfile = write_script(
+            self.dirname, output=self.API_INFO_YAML)
+        self.cli = CLI.from_version(filename, self.VERSION, self.dirname)
+        info = self.cli.api_info()
+
+        self.assert_called(
+            "show-controller --show-password --format=yaml", callfile)
+
+    def test_destroy_controller_full(self):
+        self.cli.destroy_controller("spam", True)
+
+        self.assert_called("kill-controller --yes spam")
+
+    def test_destroy_controller_minimal(self):
+        self.cli.destroy_controller()
+
+        self.assert_called("destroy-controller --yes --destroy-all-models")
 
 
 class Juju1CLITest(TwistedTestCase, MockerTestCase):

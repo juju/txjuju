@@ -2,9 +2,9 @@
 
 import json
 
-from twisted.python.failure import Failure
 from twisted.internet.error import ConnectionDone, ConnectionLost
 from twisted.internet.defer import Deferred
+from twisted.python.failure import Failure
 
 from txjuju.protocol import APIClientProtocol
 

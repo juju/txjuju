@@ -132,6 +132,48 @@ class APIInfo(namedtuple("APIInfo", "endpoints user password model_uuid")):
         return self.endpoints[0]
 
 
+class CLI(object):
+
+    @classmethod
+    def from_version(cls, filename, version, cfgdir, envvars=None):
+        if not version:
+            raise ValueError("missing version")
+        elif version.startswith("1."):
+            juju = _Juju1CLI()
+        elif version.startswith("2."):
+            juju = _Juju2CLI()
+        else:
+            raise ValueError("unsupported Juju version {!r}".format(version))
+
+        executable = get_executable(filename, juju, cfgdir, envvars)
+        return cls(executable, juju)
+
+    def __init__(self, executable, version_cli):
+        if not executable:
+            raise ValueError("missing executable")
+        if version_cli is None:
+            raise ValueError("missing version_cli")
+        self._exe = executable
+        self._juju = version_cli
+
+    def bootstrap(self, spec, to=None, cfgfile=None,
+                  verbose=False, gui=False, autoupgrade=False):
+        args = self._juju.get_bootstrap_args(
+            spec, to, cfgfile, verbose, gui, autoupgrade)
+        self._exe.run(*args)
+
+    def api_info(self, controller_name=None):
+        args = self._juju.get_api_info_args(controller_name)
+        out = self._exe.run_out(*args)
+        infos = self._juju.parse_api_info(out, controller_name)
+        return {modelname: APIInfo(**info)
+                for modelname, info in infos.items()}
+
+    def destroy_controller(self, name=None, force=False):
+        args = self._juju.get_destroy_controller_args(name, force)
+        self._exe.run(*args)
+
+
 class _Juju2CLI(object):
 
     CFGDIR_ENVVAR = "JUJU_DATA"
@@ -154,7 +196,7 @@ class _Juju2CLI(object):
 
     def get_api_info_args(self, controller_name=None):
         args = ["show-controller", "--show-password", "--format=yaml"]
-        if controller_name is None:
+        if controller_name is not None:
             args += [controller_name]
         return args
 
@@ -172,13 +214,13 @@ class _Juju2CLI(object):
             "endpoints": data["details"]["api-endpoints"],
             "user": data["account"]["user"].rstrip("@local"),
             "password": data["account"]["password"],
-            "uuid": None,  # This will be set below for each model.
+            "model_uuid": None,  # This will be set below for each model.
             }
         infos = {None: info}  # Start with the non-model API info.
         for modelname, modelinfo in data["models"].items():
             # Strip off the "<user>@local/" part.
             modelname = modelname.rpartition("/")[2]
-            infos[modelname] = dict(info, uuid=modelinfo["uuid"])
+            infos[modelname] = dict(info, model_uuid=modelinfo["uuid"])
         return infos
 
     def get_destroy_controller_args(self, name=None, force=False):
@@ -223,11 +265,11 @@ class _Juju1CLI(object):
             "endpoints": data["state-servers"],
             "user": data["user"],
             "password": data["password"],
-            "uuid": None,
+            "model_uuid": None,
             }
         return {
             None: info,
-            "controller": dict(info, uuid=data["environ-uuid"]),
+            "controller": dict(info, model_uuid=data["environ-uuid"]),
             }
 
     def get_destroy_controller_args(self, name=None, force=False):
