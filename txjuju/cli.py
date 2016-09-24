@@ -103,6 +103,11 @@ class APIInfo(namedtuple("APIInfo", "endpoints user password model_uuid")):
         if not self.password:
             raise ValueError("missing password")
 
+    @property
+    def address(self):
+        """The primary API endpoint address to use."""
+        return self.endpoints[0]
+
 
 class Juju1CLI(object):
 

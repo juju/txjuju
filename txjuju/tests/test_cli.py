@@ -131,6 +131,11 @@ class TestAPIInfo(unittest.TestCase):
         with self.assertRaises(ValueError):
             APIInfo(["host"], "admin", "")
 
+    def test_address(self):
+        info = APIInfo(["host2", "host1"], "admin", "pw")
+
+        self.assertEqual(info.address, "host2")
+
 
 class Juju1CLITest(TwistedTestCase, MockerTestCase):
     # XXX bug #1558600 to be removed with juju2 feature flag
