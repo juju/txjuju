@@ -5,7 +5,7 @@ import os.path
 import yaml
 
 
-class Writer(object):
+class ConfigWriter(object):
     """The JujuConfig writer specific to Juju 1.x."""
 
     def filenames(self, controllers):

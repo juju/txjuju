@@ -4,7 +4,7 @@ from collections import namedtuple
 import os
 import os.path
 
-from . import _config1, _config2
+from . import _juju1, _juju2
 
 
 class Config(object):
@@ -32,9 +32,9 @@ class Config(object):
         None.
         """
         if version.startswith("1."):
-            writer = _config1.Writer()
+            writer = _juju1.ConfigWriter()
         elif version.startswith("2."):
-            writer = _config2.Writer()
+            writer = _juju2.ConfigWriter()
         else:
             raise RuntimeError("unsupported Juju version {!r}".format(version))
 
