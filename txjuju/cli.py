@@ -7,14 +7,12 @@ from collections import namedtuple
 from cStringIO import StringIO
 
 import yaml
-from yaml import Loader
-
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 from twisted.internet.protocol import ProcessProtocol
 from twisted.python import log
 
-from . import config, _utils
+from . import config, _utils, _juju1, _juju2
 from .errors import CLIError
 
 
@@ -139,9 +137,9 @@ class CLI(object):
         if not version:
             raise ValueError("missing version")
         elif version.startswith("1."):
-            juju = _Juju1CLI()
+            juju = _juju1.CLIHooks()
         elif version.startswith("2."):
-            juju = _Juju2CLI()
+            juju = _juju2.CLIHooks()
         else:
             raise ValueError("unsupported Juju version {!r}".format(version))
 
@@ -174,114 +172,7 @@ class CLI(object):
         self._exe.run(*args)
 
 
-class _Juju2CLI(object):
-
-    CFGDIR_ENVVAR = "JUJU_DATA"
-
-    def get_bootstrap_args(self, spec, to=None, cfgfile=None,
-                           verbose=False, gui=False, autoupgrade=False):
-        args = ["bootstrap"]
-        if verbose:
-            args += ["-v"]
-        if to:
-            args += ["--to", to]
-        if not autoupgrade:
-            args += ["--no-auto-upgrade"]
-        if not gui:
-            args += ["--no-gui"]
-        if cfgfile:
-            args += ["--config", cfgfile]
-        args += [spec.name, spec.driver]
-        return args
-
-    def get_api_info_args(self, controller_name=None):
-        args = ["show-controller", "--show-password", "--format=yaml"]
-        if controller_name is not None:
-            args += [controller_name]
-        return args
-
-    def parse_api_info(self, output, controller_name=None):
-        data = yaml.load(output, UnicodeYamlLoader)
-        if controller_name is None:
-            if len(data) > 1:
-                raise RuntimeError(
-                    "got back {} results, expected 1".format(len(data)))
-            _, data = data.popitem()
-        else:
-            data = data[controller_name]
-
-        info = {
-            "endpoints": data["details"]["api-endpoints"],
-            "user": data["account"]["user"].rstrip("@local"),
-            "password": data["account"]["password"],
-            "model_uuid": None,  # This will be set below for each model.
-            }
-        infos = {None: info}  # Start with the non-model API info.
-        for modelname, modelinfo in data["models"].items():
-            # Strip off the "<user>@local/" part.
-            modelname = modelname.rpartition("/")[2]
-            infos[modelname] = dict(info, model_uuid=modelinfo["uuid"])
-        return infos
-
-    def get_destroy_controller_args(self, name=None, force=False):
-        if force:
-            args = ["kill-controller", "--yes"]
-        else:
-            args = ["destroy-controller", "--yes", "--destroy-all-models"]
-        if name is not None:
-            args += [name]
-        return args
-
-
-class _Juju1CLI(object):
-
-    CFGDIR_ENVVAR = "JUJU_HOME"
-
-    def get_bootstrap_args(self, spec, to=None, cfgfile=None,
-                           verbose=False, gui=False, autoupgrade=False):
-        # Note that for Juju 1.x we ignore gui.
-        if cfgfile is not None:
-            raise ValueError("cfgfile not supported for Juju 1.x bootstrap")
-        args = ["bootstrap"]
-        if verbose:
-            args += ["-v"]
-        if to:
-            args += ["--to", to]
-        if not autoupgrade:
-            args += ["--no-auto-upgrade"]
-        args += ["-e", spec.name]
-        return args
-
-    def get_api_info_args(self, controller_name=None):
-        args = ["api-info", "--password", "--refresh", "--format=json"]
-        if controller_name is not None:
-            args += ["-e", controller_name]
-        return args
-
-    def parse_api_info(self, output, controller_name=None):
-        # Note that for Juju 1.x we ignore controller_name.
-        data = json.loads(output)
-        info = {
-            "endpoints": data["state-servers"],
-            "user": data["user"],
-            "password": data["password"],
-            "model_uuid": None,
-            }
-        return {
-            None: info,
-            "controller": dict(info, model_uuid=data["environ-uuid"]),
-            }
-
-    def get_destroy_controller_args(self, name=None, force=False):
-        args = ["destroy-environment", "--yes"]
-        if force:
-            args += ["--force"]
-        if name is not None:
-            args += [name]
-        return args
-
-
-# TODO Use _Juju1CLI in the twisted code here.
+# TODO Use _juju1,CLIHooks in the twisted code here.
 
 class Juju1CLI(object):
 
@@ -400,7 +291,7 @@ class Juju1CLI(object):
         raise error
 
 
-# TODO Use _Juju2CLI in the twisted code here.
+# TODO Use _juju2,CLIHooks in the twisted code here.
 
 class Juju2CLI(object):
 
@@ -510,7 +401,7 @@ class Juju2CLI(object):
 
     def _parse_yaml_output(self, (stdout, stderr)):
         """Parse YAML output from the juju process."""
-        return yaml.load(stdout, UnicodeYamlLoader)
+        return yaml.load(stdout, _utils.UnicodeYamlLoader)
 
     def _run(self, args=(), outfile=None):
         env = os.environ.copy()
@@ -539,12 +430,6 @@ class Juju2CLI(object):
         error = CLIError(out, err, signal=signal)
         log.err(error)
         raise error
-
-
-class UnicodeYamlLoader(Loader):
-    """yaml loader class returning unicode objects instead of python str."""
-UnicodeYamlLoader.add_constructor(
-    u'tag:yaml.org,2002:str', UnicodeYamlLoader.construct_scalar)
 
 
 def spawn_process(executable, args, env, outfile=None):
