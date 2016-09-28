@@ -69,6 +69,20 @@ class TestBootstrapSpec(unittest.TestCase):
         self.assertEqual(spec.default_series, "trusty")
         self.assertIsNone(spec.admin_secret)
 
+    def test_repr(self):
+        spec = BootstrapSpec("my-env", "lxd", "xenial", "pw")
+        self.assertEqual(
+            repr(spec),
+            ("BootstrapSpec(name='my-env', type='lxd', "
+             "default_series='xenial', admin_secret='pw')"),
+            )
+        spec = BootstrapSpec("my-env", "lxd")
+        self.assertEqual(
+            repr(spec),
+            ("BootstrapSpec(name='my-env', type='lxd', "
+             "default_series='trusty', admin_secret=None)"),
+            )
+
     def test_config(self):
         spec = BootstrapSpec("my-env", "lxd", "xenial", "pw")
         cfg = spec.config()

@@ -61,6 +61,15 @@ class BootstrapSpec(object):
         self.default_series = default_series
         self.admin_secret = admin_secret
 
+    _fields = __init__.__code__.co_varnames[1:]
+
+    def __repr__(self):
+        return "{}({})".format(
+            type(self).__name__,
+            ', '.join("{}={!r}".format(name, getattr(self, name))
+                                       for name in self._fields),
+            )
+
     def config(self):
         """Return the JujuConfig corresponding to this spec."""
         controller = config.ControllerConfig.from_info(
