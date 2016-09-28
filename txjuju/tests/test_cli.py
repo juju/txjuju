@@ -431,7 +431,7 @@ class CLIJuju1Tests(unittest.TestCase):
 
     API_INFO_JSON = """\
 {
-    "state-servers": ["[fd1e:9828:924e:a48:216:3eff:fe7f:8125]:17070", "10.235.227.251:17070"],
+    "state-servers": ["10.235.227.251:17070"],
     "user": "admin",
     "password": "0f154812dd1c02973623c887b2565ea3",
     "environ-uuid": "d3a5befc-c392-4722-85fc-631531e74a09"
@@ -471,8 +471,21 @@ class CLIJuju1Tests(unittest.TestCase):
         filename, callfile = write_script(
             self.dirname, output=self.API_INFO_JSON)
         self.cli = CLI.from_version(filename, self.VERSION, self.dirname)
-        info = self.cli.api_info("spam")
+        infos = self.cli.api_info("spam")
 
+        self.assertEquals(infos, {
+            None: APIInfo(
+                ["10.235.227.251:17070"],
+                "admin",
+                "0f154812dd1c02973623c887b2565ea3",
+                ),
+            "controller": APIInfo(
+                ["10.235.227.251:17070"],
+                "admin",
+                "0f154812dd1c02973623c887b2565ea3",
+                "d3a5befc-c392-4722-85fc-631531e74a09",
+                ),
+            })
         self.assert_called(
             "api-info --password --refresh --format=json -e spam", callfile)
 
@@ -480,8 +493,21 @@ class CLIJuju1Tests(unittest.TestCase):
         filename, callfile = write_script(
             self.dirname, output=self.API_INFO_JSON)
         self.cli = CLI.from_version(filename, self.VERSION, self.dirname)
-        info = self.cli.api_info()
+        infos = self.cli.api_info()
 
+        self.assertEquals(infos, {
+            None: APIInfo(
+                ["10.235.227.251:17070"],
+                "admin",
+                "0f154812dd1c02973623c887b2565ea3",
+                ),
+            "controller": APIInfo(
+                ["10.235.227.251:17070"],
+                "admin",
+                "0f154812dd1c02973623c887b2565ea3",
+                "d3a5befc-c392-4722-85fc-631531e74a09",
+                ),
+            })
         self.assert_called(
             "api-info --password --refresh --format=json", callfile)
 
@@ -504,7 +530,7 @@ class CLIJuju2Tests(unittest.TestCase):
 spam:
   details:
     uuid: d3a5befc-c392-4722-85fc-631531e74a09
-    api-endpoints: ['[fd1e:9828:924e:a48:216:3eff:fe7f:8125]:17070', '10.235.227.251:17070']
+    api-endpoints: ['10.235.227.251:17070']
     ca-cert: |
       -----BEGIN CERTIFICATE-----
       MIIDzTCCArWgAwIBAgIUFnfJGYpNsh6YEHcLV6Nz1tvlAfUwDQYJKoZIhvcNAQEL
@@ -576,8 +602,27 @@ spam:
         filename, callfile = write_script(
             self.dirname, output=self.API_INFO_YAML)
         self.cli = CLI.from_version(filename, self.VERSION, self.dirname)
-        info = self.cli.api_info("spam")
+        infos = self.cli.api_info("spam")
 
+        self.assertEquals(infos, {
+            None: APIInfo(
+                ["10.235.227.251:17070"],
+                "admin",
+                "0f154812dd1c02973623c887b2565ea3",
+                ),
+            "controller": APIInfo(
+                ["10.235.227.251:17070"],
+                "admin",
+                "0f154812dd1c02973623c887b2565ea3",
+                "d3a5befc-c392-4722-85fc-631531e74a09",
+                ),
+            "default": APIInfo(
+                ["10.235.227.251:17070"],
+                "admin",
+                "0f154812dd1c02973623c887b2565ea3",
+                "b93f17f2-ad56-456d-8051-06e9f7ba46ec",
+                ),
+            })
         self.assert_called(
             "show-controller --show-password --format=yaml spam", callfile)
 
@@ -585,8 +630,27 @@ spam:
         filename, callfile = write_script(
             self.dirname, output=self.API_INFO_YAML)
         self.cli = CLI.from_version(filename, self.VERSION, self.dirname)
-        info = self.cli.api_info()
+        infos = self.cli.api_info()
 
+        self.assertEquals(infos, {
+            None: APIInfo(
+                ["10.235.227.251:17070"],
+                "admin",
+                "0f154812dd1c02973623c887b2565ea3",
+                ),
+            "controller": APIInfo(
+                ["10.235.227.251:17070"],
+                "admin",
+                "0f154812dd1c02973623c887b2565ea3",
+                "d3a5befc-c392-4722-85fc-631531e74a09",
+                ),
+            "default": APIInfo(
+                ["10.235.227.251:17070"],
+                "admin",
+                "0f154812dd1c02973623c887b2565ea3",
+                "b93f17f2-ad56-456d-8051-06e9f7ba46ec",
+                ),
+            })
         self.assert_called(
             "show-controller --show-password --format=yaml", callfile)
 
