@@ -14,3 +14,7 @@ coverage:
 lint:
 	# sudo apt-get install python-flake8
 	$(PYTHON) -m flake8 .
+
+.PHONY: install-dev
+install-dev:
+	ln -s $(shell pwd)/txjuju /usr/local/lib/python2.7/dist-packages/txjuju
