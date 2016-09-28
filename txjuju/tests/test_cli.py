@@ -1,5 +1,6 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
+from collections import namedtuple
 import json
 import os
 import unittest
@@ -69,19 +70,64 @@ class TestBootstrapSpec(unittest.TestCase):
         self.assertEqual(spec.default_series, "trusty")
         self.assertIsNone(spec.admin_secret)
 
-    def test_repr(self):
+    def test_repr_full(self):
         spec = BootstrapSpec("my-env", "lxd", "xenial", "pw")
         self.assertEqual(
             repr(spec),
             ("BootstrapSpec(name='my-env', type='lxd', "
              "default_series='xenial', admin_secret='pw')"),
             )
+
+    def test_repr_minimal(self):
         spec = BootstrapSpec("my-env", "lxd")
         self.assertEqual(
             repr(spec),
             ("BootstrapSpec(name='my-env', type='lxd', "
              "default_series='trusty', admin_secret=None)"),
             )
+
+    def test___eq___same_with_base_class(self):
+        spec = BootstrapSpec("my-env", "lxd")
+        other = BootstrapSpec("my-env", "lxd")
+
+        self.assertTrue(spec == other)
+
+
+    def test___eq___same_with_sub_class(self):
+        spec = BootstrapSpec("my-env", "lxd")
+        other = type("SubSpec", (BootstrapSpec,), {})("my-env", "lxd")
+
+        self.assertTrue(spec == other)
+
+    def test___eq___same_with_other_class(self):
+        spec = BootstrapSpec("my-env", "lxd", "trusty", "pw")
+        other_cls = namedtuple("Sub", "name type default_series admin_secret")
+        other = other_cls("my-env", "lxd", "trusty", "pw")
+
+        self.assertTrue(spec == other)
+
+    def test___eq___identity(self):
+        spec = BootstrapSpec("my-env", "lxd")
+
+        self.assertTrue(spec == spec)
+
+    def test___eq___different(self):
+        spec = BootstrapSpec("my-env", "lxd")
+        other = BootstrapSpec("my-env", "spam")
+
+        self.assertFalse(spec == other)
+
+    def test___ne___same(self):
+        spec = BootstrapSpec("my-env", "lxd")
+        other = BootstrapSpec("my-env", "lxd")
+
+        self.assertFalse(spec != other)
+
+    def test___ne___different(self):
+        spec = BootstrapSpec("my-env", "lxd")
+        other = BootstrapSpec("my-env", "spam")
+
+        self.assertTrue(spec != other)
 
     def test_config(self):
         spec = BootstrapSpec("my-env", "lxd", "xenial", "pw")

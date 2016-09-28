@@ -70,6 +70,20 @@ class BootstrapSpec(object):
                                        for name in self._fields),
             )
 
+    def __eq__(self, other):
+        for name in self._fields:
+            try:
+                other_val = getattr(other, name)
+            except AttributeError:
+                # TODO Return NotImplemented?
+                return False
+            if getattr(self, name) != other_val:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not (self == other)
+
     def config(self):
         """Return the JujuConfig corresponding to this spec."""
         controller = config.ControllerConfig.from_info(
