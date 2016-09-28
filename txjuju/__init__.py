@@ -1,9 +1,17 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
-# Expose all the error classes at the top level.
 from .errors import (
     CLIError, APIRequestError, APIAuthError, APIRetriableError,
     AllWatcherStoppedError, InvalidAPIEndpointAddress)
+
+
+__all__ = [
+    "__version__", "JUJU1", "JUJU2",
+    "get_cli_class", "prepare_for_bootstrap",
+    # errors
+    "CLIError", "APIRequestError", "APIAuthError", "APIRetriableError",
+    "AllWatcherStoppedError", "InvalidAPIEndpointAddress",
+    ]
 
 
 __version__ = "0.9.0a1"
@@ -40,8 +48,3 @@ def prepare_for_bootstrap(spec, version, cfgdir):
     cfg = spec.config()
     filenames = cfg.write(cfgdir, version)
     return filenames.get(spec.name) if filenames else None
-
-
-# Appease pyflakes
-(CLIError, APIRequestError, APIAuthError, APIRetriableError,
-    AllWatcherStoppedError, InvalidAPIEndpointAddress)
