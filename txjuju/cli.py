@@ -131,9 +131,19 @@ class APIInfo(namedtuple("APIInfo", "endpoints user password model_uuid")):
 
 
 class CLI(object):
+    """The client CLI for some Juju version."""
 
     @classmethod
     def from_version(cls, filename, version, cfgdir, envvars=None):
+        """Return a new CLI for the given binary and version.
+
+        @param filename: The path to the juju binary.
+        @param version: The Juju version to use.
+        @param cfgdir: The path to the "juju home" directory.
+        @param envvars: The extra environment variables to use when
+            running the juju command.  If not set then os.environs
+            is used.
+        """
         if not version:
             raise ValueError("missing version")
         elif version.startswith("1."):
@@ -147,6 +157,10 @@ class CLI(object):
         return cls(executable, juju)
 
     def __init__(self, executable, version_cli):
+        """
+        @param executable: The Executable to use.
+        @param version_cli: The version-specific subcommand handler.
+        """
         if not executable:
             raise ValueError("missing executable")
         if version_cli is None:
@@ -156,11 +170,25 @@ class CLI(object):
 
     def bootstrap(self, spec, to=None, cfgfile=None,
                   verbose=False, gui=False, autoupgrade=False):
+        """Bootstrap a new Juju controller.
+
+        @param spec: The BootstrapSpec to use.
+        @param to: The machine ID to which to deploy the API server.
+        @param cfgfile: The bootstrap config file to use.
+        @param verbose: Produce more verbose output.
+        @param gui: Install and start the JUJU GUI for the controller.
+        @param autoupgrade: Perform automatic upgrades of Ubuntu.
+        """
         args = self._juju.get_bootstrap_args(
             spec, to, cfgfile, verbose, gui, autoupgrade)
         self._exe.run(*args)
 
     def api_info(self, controller_name=None):
+        """Return {<model name>: APIInfo} for each of the controller's models.
+
+        One entry is included for the controller-level API facades.  The
+        key for that entry is None.
+        """
         args = self._juju.get_api_info_args(controller_name)
         out = self._exe.run_out(*args)
         infos = self._juju.parse_api_info(out, controller_name)
@@ -168,6 +196,7 @@ class CLI(object):
                 for modelname, info in infos.items()}
 
     def destroy_controller(self, name=None, force=False):
+        """Destroy the controller."""
         args = self._juju.get_destroy_controller_args(name, force)
         self._exe.run(*args)
 
