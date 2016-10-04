@@ -1,7 +1,25 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
 
-class RequestError(Exception):
+class CLIError(Exception):
+    """Raised when juju fails."""
+
+    def __init__(self, out, err, code=None, signal=None):
+        if code is not None:
+            reason = "exit code {}".format(code)
+        if signal is not None:
+            reason = "signal {}".format(signal)
+        msg = ("juju ended with {} (out='{}', err='{}')"
+               ).format(reason, out, err)
+        super(CLIError, self).__init__(msg)
+
+        self.out = out
+        self.err = err
+        self.code = code
+        self.signal = signal
+
+
+class APIRequestError(Exception):
     """The server returned an error for a given API request."""
 
     def __init__(self, error, code):
@@ -10,24 +28,25 @@ class RequestError(Exception):
         @param code: The machine-oriented error code (a string, see
             juju/apiserver/params/apierror.go).
         """
-        super(RequestError, self).__init__("%s (code: '%s')" % (error, code))
+        msg = "{} (code: '{}')".format(error, code)
+        super(APIRequestError, self).__init__(msg)
         self.error = error
         self.code = code
 
 
-class AuthError(RequestError):
+class APIAuthError(APIRequestError):
     """Authorization error (e.g. login request with to wrong password)."""
 
 
-class RetriableError(RequestError):
+class APIRetriableError(APIRequestError):
     """A server-side error that could be retried (e.g. juju is upgrading)."""
 
 
-class AllWatcherStoppedError(RetriableError):
+class AllWatcherStoppedError(APIRetriableError):
     """The server stopped the AllWatcher (probably due to a tools upgrade)."""
 
 
-class InvalidEndpointAddress(Exception):
+class InvalidAPIEndpointAddress(Exception):
     """The address is an invalid Juju API endpoint.
 
     @param addr: The invalid address.
@@ -35,6 +54,6 @@ class InvalidEndpointAddress(Exception):
     """
 
     def __init__(self, addr):
-        super(InvalidEndpointAddress, self).__init__(
-            "Invalid Juju endpoint: %s" % addr)
+        msg = "Invalid Juju endpoint: {}".format(addr)
+        super(InvalidAPIEndpointAddress, self).__init__(msg)
         self.addr = addr

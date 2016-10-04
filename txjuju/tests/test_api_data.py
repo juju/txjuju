@@ -2,18 +2,18 @@
 
 from unittest import TestCase
 
-from txjuju.entities import (
-    JujuApplicationConfig, MachineInfo, AnnotationInfo, ActionInfo)
+from txjuju.api_data import (
+    ApplicationConfig, MachineInfo, AnnotationInfo, ActionInfo)
 
 
-class JujuApplicationConfigTest(TestCase):
+class ApplicationConfigTest(TestCase):
 
     def test_has_options(self):
         """
-        JujuApplicationConfig.has_options() returns whether the
+        ApplicationConfig.has_options() returns whether the
         config has the given options.
         """
-        config = JujuApplicationConfig("nfs", "nfs", config={
+        config = ApplicationConfig("nfs", "nfs", config={
             u"foo": {u"default": True,
                      u"description": u"Foo.",
                      u"type": u"string",
@@ -23,9 +23,9 @@ class JujuApplicationConfigTest(TestCase):
 
     def test_get_value(self):
         """
-        JujuApplicationConfig.get_value() returns the value of an option.
+        ApplicationConfig.get_value() returns the value of an option.
         """
-        config = JujuApplicationConfig("nfs", "nfs", config={
+        config = ApplicationConfig("nfs", "nfs", config={
             u"foo": {u"default": True,
                      u"description": u"Foo.",
                      u"type": u"string",

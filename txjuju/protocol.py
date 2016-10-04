@@ -10,21 +10,21 @@ from json import dumps, loads
 from twisted.internet.defer import Deferred
 from twisted.internet.protocol import Protocol, Factory
 
-from .errors import RequestError, AuthError, RetriableError
+from .errors import APIRequestError, APIAuthError, APIRetriableError
 
 
 # Map known failures modes to the associated exception class.
 # See https://github.com/juju/juju/blob/master/apiserver/params/apierror.go
 ERROR_CODES = {
-    "unauthorized access": AuthError,
-    "upgrade in progress": RetriableError,
-    "watcher was stopped": RetriableError,
-    "try again": RetriableError,
-    "excessive contention": RetriableError,
+    "unauthorized access": APIAuthError,
+    "upgrade in progress": APIRetriableError,
+    "watcher was stopped": APIRetriableError,
+    "try again": APIRetriableError,
+    "excessive contention": APIRetriableError,
 }
 
 
-class JujuClientProtocol(Protocol):
+class APIClientProtocol(Protocol):
     """A client protocol that knows how to speak to a Juju API server.
 
     @ivar disconnected: A deferred fired when the connection drops.
@@ -117,13 +117,13 @@ class JujuClientProtocol(Protocol):
             # the 'omitempty' annotation in the outMsg struct of
             # juju/rpc/jsoncodec/codec.go.
             code = payload.pop("ErrorCode", "")
-            error_class = ERROR_CODES.get(code, RequestError)
+            error_class = ERROR_CODES.get(code, APIRequestError)
             deferred.errback(error_class(error, code))
         else:
             deferred.callback(payload.pop("Response", {}))
 
 
-class JujuClientFactory(Factory):
+class APIClientFactory(Factory):
     """Build L{JujuProtocol} instances."""
 
-    protocol = JujuClientProtocol
+    protocol = APIClientProtocol
