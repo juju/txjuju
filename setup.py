@@ -18,8 +18,13 @@ EMAIL = 'juju@lists.ubuntu.com'
 PROJECT_URL = 'https://github.com/juju/txjuju'
 LICENSE = 'LGPLv3'
 
-with open(os.path.join(basedir, 'README.md')) as readme_file:
-    DESCRIPTION = readme_file.read()
+try:
+    readme_file = open(os.path.join(basedir, 'README.md'))
+except IOError:
+    DESCRIPTION = ''
+else:
+    with readme_file:
+        DESCRIPTION = readme_file.read()
 
 # dymanically generated data
 
