@@ -4,7 +4,7 @@
 
 Example::
 
-    endpoint = (reactor, "ec2-1-2-3-4.compute-1.amazonaws.com")
+    endpoint = Endpoint(reactor, "ec2-1-2-3-4.compute-1.amazonaws.com")
     deferred = endpoint.connect()
 
     @inlineCallbacks
@@ -954,7 +954,7 @@ def _extract_single_result(results):
 
 
 def _handle_api_error(result):
-    """Raise a APIRequestError if the result contains an error."""
+    """Raise an APIRequestError if the result contains an error."""
     error = result.get("error")
     if not error:
         return

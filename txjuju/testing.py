@@ -70,7 +70,7 @@ class ProtocolMemoryReactor(MemoryReactorClock):
 
 
 class FakeAPIBackend(object):
-    """A fake transport for a APIClientProtocol.
+    """A fake transport for an APIClientProtocol.
 
     @ivar requests: Map request IDs to their payload.
     """

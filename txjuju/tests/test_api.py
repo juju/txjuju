@@ -144,7 +144,7 @@ class Juju1APIClientTest(TestCase):
 
     def test_modelInfo_bad_result(self):
         """
-        _parseModelInfo() fails with a APIRequestError if the result is
+        _parseModelInfo() fails with an APIRequestError if the result is
         not correctly formed.
         """
         uuid = u"a0c03f34-ea02-11e2-8e96-875122dd4b52"
@@ -759,7 +759,7 @@ class Juju1APIClientTest(TestCase):
             parameters, self.backend.lastParams["Actions"][0]["Parameters"])
 
     def test_enqueueAction_failure(self):
-        """If the action fails, a APIRequestError is raised."""
+        """If the action fails, an APIRequestError is raised."""
         parameters = {"param1": "foo", "param2": "bar"}
         deferred = self.client.enqueueAction(
             "do-stuff", "service/2", parameters=parameters)
@@ -862,7 +862,7 @@ class Juju2APIClientTest(TestCase):
 
     def test_modelInfo_bad_response(self):
         """
-        _parseModelInfo() fails with a APIRequestError if the response is
+        _parseModelInfo() fails with an APIRequestError if the response is
         not correctly formed.
         """
         uuid = u"a0c03f34-ea02-11e2-8e96-875122dd4b52"
@@ -876,7 +876,7 @@ class Juju2APIClientTest(TestCase):
 
     def test_modelInfo_no_results(self):
         """
-        _parseModelInfo() fails with a APIRequestError if there aren't any
+        _parseModelInfo() fails with an APIRequestError if there aren't any
         results.
         """
         uuid = u"a0c03f34-ea02-11e2-8e96-875122dd4b52"
@@ -890,7 +890,7 @@ class Juju2APIClientTest(TestCase):
 
     def test_modelInfo_multiple_results(self):
         """
-        _parseModelInfo() fails with a APIRequestError if there is more
+        _parseModelInfo() fails with an APIRequestError if there is more
         than one result.
         """
         uuid = u"a0c03f34-ea02-11e2-8e96-875122dd4b52"
@@ -904,7 +904,7 @@ class Juju2APIClientTest(TestCase):
 
     def test_modelInfo_error_result(self):
         """
-        _parseModelInfo() fails with a APIRequestError if the result has
+        _parseModelInfo() fails with an APIRequestError if the result has
         an error set.
         """
         uuid = u"a0c03f34-ea02-11e2-8e96-875122dd4b52"
@@ -921,7 +921,7 @@ class Juju2APIClientTest(TestCase):
 
     def test_modelInfo_bad_result(self):
         """
-        _parseModelInfo() fails with a APIRequestError if the result is
+        _parseModelInfo() fails with an APIRequestError if the result is
         not correctly formed.
         """
         uuid = u"a0c03f34-ea02-11e2-8e96-875122dd4b52"
@@ -1007,7 +1007,7 @@ class Juju2APIClientTest(TestCase):
         self.assertItemsEqual(["1", "2"], result)
 
     def test_runOnAllMachines_failure(self):
-        """If the RunOnAllMachines fails, a APIRequestError is raised."""
+        """If the RunOnAllMachines fails, an APIRequestError is raised."""
         deferred = self.client.runOnAllMachines(
             commands="ls /home", timeout=timedelta(seconds=10))
         self.backend.response(
@@ -1255,7 +1255,7 @@ class Juju2APIClientTest(TestCase):
 
     def test_addCharm_with_error(self):
         """
-        The addCharm method raises a APIRequestError when the API response
+        The addCharm method raises an APIRequestError when the API response
         contains an error.
         """
         deferred = self.client.addCharm("cs:trusty/absent-charm")
