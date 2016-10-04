@@ -7,6 +7,7 @@ except ImportError:
 
 
 basedir = os.path.abspath(os.path.dirname(__file__) or '.')
+README = os.path.join(basedir, 'README.md')
 
 # required data
 
@@ -18,12 +19,9 @@ EMAIL = 'juju@lists.ubuntu.com'
 PROJECT_URL = 'https://github.com/juju/txjuju'
 LICENSE = 'LGPLv3'
 
-try:
-    readme_file = open(os.path.join(basedir, 'README.md'))
-except IOError:
-    DESCRIPTION = ''
-else:
-    with readme_file:
+DESCRIPTION = ''
+if os.path.exists(README):
+    with open(README) as readme_file:
         DESCRIPTION = readme_file.read()
 
 # dymanically generated data
