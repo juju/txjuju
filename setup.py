@@ -47,7 +47,6 @@ DEPS = ['twisted',
         # for testing
         'fixtures',
         'testtools',
-        'mocker',
         ]
 
 
