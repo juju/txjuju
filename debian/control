@@ -17,8 +17,16 @@ Package: python-txjuju
 Architecture: any
 Depends: ${python:Depends}, ${misc:Depends}, ${extra:Depends},
          ${shlibs:Depends},
-         python-fixtures,
-         python-testtools,
          python-twisted-core (>= 16.0.0),
          python-yaml
 Description: A twisted-based Juju client.
+
+#Package: python-txjuju-testing
+#Architecture: any
+#Depends: ${python:Depends}, ${misc:Depends}, ${extra:Depends},
+#         ${shlibs:Depends},
+#         python-fixtures,
+#         python-testtools,
+#         python-txjuju (= ${binary:Version}),
+#         python-twisted-core (>= 16.0.0)
+#Description: Testing helpers based on txjuju.

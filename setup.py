@@ -45,9 +45,11 @@ for path, dirs, files in os.walk(package_name):
 
 # dependencies
 
-DEPS = ['twisted',
+DEPS = [
+        'twisted',
         'yaml',
-        # for testing
+        ]
+TESTING_DEPS = [
         'fixtures',
         'testtools',
         ]
