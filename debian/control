@@ -1,0 +1,19 @@
+Source: txjuju
+Maintainer: Canonical Landscape Team <landscape-team@canonical.com>
+Section: python
+Priority: optional
+Build-Depends: dh-python, python-setuptools (>= 0.6b3), python-all (>= 2.6.6-3), debhelper (>= 9)
+Standards-Version: 3.9.2
+Homepage: https://github.com/juju/txjuju
+
+Package: python-txjuju
+Architecture: any
+Depends: ${python:Depends}, ${misc:Depends}, ${extra:Depends},
+         ${shlibs:Depends},
+         python-twisted-core (>= 16.0.0),
+         python-twisted-web (>= 16.0.0),
+         python-twisted-names (>= 16.0.0),
+         python-yaml,
+         python-testtools,
+         python-fixtures
+Description: A twisted-based Juju client.
