@@ -13,6 +13,7 @@ from txjuju.config import (
 
 
 class _ConfigTest(object):
+    """The base test class for Config-related tests."""
 
     def setUp(self):
         super(_ConfigTest, self).setUp()
@@ -23,6 +24,7 @@ class _ConfigTest(object):
         super(_ConfigTest, self).tearDown()
 
     def assert_cfgfile(self, filename, expected):
+        """Contents of the identified YAML file must match expected."""
         filename = os.path.join(self.cfgdir, filename)
         with open(filename) as cfgfile:
             data = yaml.load(cfgfile)
@@ -30,17 +32,20 @@ class _ConfigTest(object):
 
 
 class ConfigTest(_ConfigTest, unittest.TestCase):
+    """Tests that are not specific to a Juju version."""
 
     # The version doesn't matter as long as it's consistent.
     version = "1.25.6"
 
     def populate_cfgdir(self, name):
+        """Write a basic Juju config to self.cfgdir."""
         controller = ControllerConfig.from_info(
             name, "lxd", "my-lxd", "xenial", "pw")
         cfg = Config(controller)
         cfg.write(self.cfgdir, self.version)
 
     def test_write_cfgdir_missing(self):
+        """Config.write() creates the config dir if it is missing."""
         cfgdir = os.path.join(self.cfgdir, "one", "two", "three")
         cfg = Config(ControllerConfig("eggs", CloudConfig("maas")))
         cfg.write(cfgdir, self.version, clobber=True)
@@ -48,6 +53,7 @@ class ConfigTest(_ConfigTest, unittest.TestCase):
         self.assertEqual(os.listdir(cfgdir), ["environments.yaml"])
 
     def test_write_clobber_collision(self):
+        """Config.write() overwrites config files if clobber is True."""
         self.populate_cfgdir("spam")
         cfg = Config(ControllerConfig(
             "eggs", CloudConfig("maas"), BootstrapConfig("")))
@@ -58,12 +64,16 @@ class ConfigTest(_ConfigTest, unittest.TestCase):
             {"environments": {"eggs": {"type": "maas"}}})
 
     def test_write_clobber_no_collision(self):
+        """Config.write() behaves like normal if clobber is True and
+        the config files aren't there already."""
         cfg = Config(ControllerConfig("eggs", CloudConfig("maas")))
         cfg.write(self.cfgdir, self.version, clobber=True)
 
         self.assertEqual(os.listdir(self.cfgdir), ["environments.yaml"])
 
     def test_write_no_clobber_collision(self):
+        """Config.write() fails if clobber is False and the config files
+        are already there.  The existing files are not changed."""
         self.populate_cfgdir("spam")
         cfg = Config(ControllerConfig("eggs", CloudConfig("maas")))
 
@@ -81,6 +91,8 @@ class ConfigTest(_ConfigTest, unittest.TestCase):
              })
 
     def test_write_no_clobber_no_collision(self):
+        """Config.write() works fine if clobber is False and no config
+        files are already there."""
         cfg = Config(ControllerConfig("eggs", CloudConfig("maas")))
         cfg.write(self.cfgdir, self.version, clobber=False)
 
@@ -92,6 +104,8 @@ class ConfigTest_Juju1(_ConfigTest, unittest.TestCase):
     VERSION = "1.25.6"
 
     def test_write_one_full(self):
+        """Config.write() works fine for Juju 1.x if there is only one
+        fully-populated ControllerConfig."""
         cfg = Config(ControllerConfig.from_info(
             "spam", "lxd", "my-lxd", "xenial", "pw"))
         bootstraps = cfg.write(self.cfgdir, self.VERSION)
@@ -110,6 +124,8 @@ class ConfigTest_Juju1(_ConfigTest, unittest.TestCase):
              })
 
     def test_write_one_minimal(self):
+        """Config.write() works fine for Juju 1.x if there is only one
+        partially-populated ControllerConfig."""
         cfg = Config(
             ControllerConfig.from_info("spam", "lxd", "my-lxd", "", ""))
         bootstraps = cfg.write(self.cfgdir, self.VERSION)
@@ -126,6 +142,8 @@ class ConfigTest_Juju1(_ConfigTest, unittest.TestCase):
              })
 
     def test_write_multiple(self):
+        """Config.write() works fine for Juju 1.x if there are multiple
+        controller configs."""
         cfg = Config(
             ControllerConfig.from_info(
                 "spam", "lxd", "my-lxd", "xenial", "sekret"),
@@ -153,6 +171,8 @@ class ConfigTest_Juju1(_ConfigTest, unittest.TestCase):
              })
 
     def test_write_none(self):
+        """Config.write() works fine for Juju 1.x if there aren't any
+        controller configs."""
         cfg = Config()
         bootstraps = cfg.write(self.cfgdir, self.VERSION)
 
@@ -166,6 +186,8 @@ class ConfigTest_Juju2(_ConfigTest, unittest.TestCase):
     VERSION = "2.0.0"
 
     def test_write_one_full(self):
+        """Config.write() works fine for Juju 2.x if there is only one
+        fully-populated ControllerConfig."""
         cfg = Config(ControllerConfig.from_info(
             "spam", "lxd", "my-lxd", "xenial", "pw"))
         bootstraps = cfg.write(self.cfgdir, self.VERSION)
@@ -192,6 +214,8 @@ class ConfigTest_Juju2(_ConfigTest, unittest.TestCase):
         self.assert_cfgfile("credentials.yaml", {"credentials": {}})
 
     def test_write_one_minimal(self):
+        """Config.write() works fine for Juju 2.x if there is only one
+        partially-populated ControllerConfig."""
         cfg = Config(ControllerConfig.from_info(
             "spam", "lxd", "my-lxd", "", ""))
         bootstraps = cfg.write(self.cfgdir, self.VERSION)
@@ -215,6 +239,8 @@ class ConfigTest_Juju2(_ConfigTest, unittest.TestCase):
         self.assert_cfgfile("credentials.yaml", {"credentials": {}})
 
     def test_write_multiple(self):
+        """Config.write() works fine for Juju 2.x if there are multiple
+        controller configs."""
         cfg = Config(
             ControllerConfig.from_info(
                 "spam", "lxd", "my-lxd", "xenial", "sekret"),
@@ -257,6 +283,8 @@ class ConfigTest_Juju2(_ConfigTest, unittest.TestCase):
         self.assert_cfgfile("credentials.yaml", {"credentials": {}})
 
     def test_write_none(self):
+        """Config.write() works fine for Juju 2.x if there aren't any
+        controller configs."""
         cfg = Config()
         bootstraps = cfg.write(self.cfgdir, self.VERSION)
 
