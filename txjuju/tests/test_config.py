@@ -118,6 +118,11 @@ class ControllerConfigTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             ControllerConfig("spam", None)
 
+    def test_missing_bootstrap(self):
+        """ControllerConfig() fails if bootstrap is empty."""
+        with self.assertRaises(ValueError):
+            ControllerConfig("spam", ())
+
 
 class CloudConfigTest(unittest.TestCase):
 

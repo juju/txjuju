@@ -59,7 +59,7 @@ class ControllerConfig(
         if bootstrap is None:
             bootstrap = BootstrapConfig("")
         elif not isinstance(bootstrap, BootstrapConfig):
-            bootstrap = BootstrapConfig(*bootstrap)
+            bootstrap = BootstrapConfig(*bootstrap) if bootstrap else None
 
         return super(ControllerConfig, cls).__new__(
             cls, name, cloud, bootstrap)
