@@ -28,6 +28,8 @@ Here are the essential classes of txjuju:
 
 Additionally, ``txjuju.prepare_for_bootstrap()`` is especially useful.
 
+For more information see DOC.rst.
+
 
 Example Usage
 =========
