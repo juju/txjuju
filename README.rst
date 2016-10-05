@@ -17,21 +17,16 @@ offer a better experience.  At some point ``python-libjuju`` may
 entirely supercede txjuju.
 
 
-Package Content
+Key Components
 =========
 
-Essential Modules:
+Here are the essential classes of txjuju:
 
-* ``txjuju.api``    - the Juju API client
-* ``txjuju.cli``    - the Juju CLI wrapper
-* ``txjuju.config`` - abstraction of Juju's local config
+* ``txjuju.api.Endpoint``
+* ``txjuju.api.Juju2APIClient`` and ``txjuju.api.Juju1APIClient``
+* ``txjuju.cli.Juju2CLI`` and ``txjuju.cli.Juju1CLI``
 
-Accessory Modules:
-
-* ``txjuju.api_data``  - API input and output data types
-* ``txjuju.errors``    - txjuju-specific error classes
-* ``txjuju.protocol``  - the twisted protocol used by the API client
-* ``txjuju.testing.*`` - test doubles and other testing-related helpers
+Additionally, ``txjuju.prepare_for_bootstrap()`` is especially useful.
 
 
 Contributing
