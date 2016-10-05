@@ -17,6 +17,23 @@ offer a better experience.  At some point ``python-libjuju`` may
 entirely supercede txjuju.
 
 
+Package Content
+=========
+
+Essential Modules:
+
+* ``txjuju.api``    - the Juju API client
+* ``txjuju.cli``    - the Juju CLI wrapper
+* ``txjuju.config`` - abstraction of Juju's local config
+
+Accessory Modules:
+
+* ``txjuju.api_data``  - API input and output data types
+* ``txjuju.errors``    - txjuju-specific error classes
+* ``txjuju.protocol``  - the twisted protocol used by the API client
+* ``txjuju.testing.*`` - test doubles and other testing-related helpers
+
+
 Contributing
 =========
 
