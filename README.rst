@@ -29,6 +29,54 @@ Here are the essential classes of txjuju:
 Additionally, ``txjuju.prepare_for_bootstrap()`` is especially useful.
 
 
+Example Usage
+=========
+
+API Client
+---------
+
+   from twisted.internet import reactor
+   from twisted.internet.defer import inlineCallbacks
+   from txjuju.api import Endpoint
+
+   endpoint = Endpoint(reactor, "ec2-1-2-3-4.compute-1.amazonaws.com")
+   deferred = endpoint.connect()
+
+   @inlineCallbacks
+   def connected(client):
+       yield client.login("user-admin", "54830489236383334d1d9fd84adae72c")
+       yield client.setAnnotations("unit", "1", {"foo": "bar"})
+
+   deferred.addCallback(connected)
+
+   reactor.run()
+
+CLI Wrapper
+---------
+
+   import pprint
+   from twisted.internet import reactor
+   from twisted.internet.defer import inlineCallbacks, returnValue
+   from txjuju import prepare_for_bootstrap
+   from txjuju.cli import BootstrapSpec, Juju1CLI
+
+   cfgdir = "/tmp/my-juju"
+   spec = BootstrapSpec("my-env", "lxd")
+   cli = Juju1CLI(cfgdir)
+
+   @inlineCallbacks
+   def bootstrap():
+       prepare_for_bootstrap(spec, "1.25.6", cfgdir)
+       yield cli.boostrap(spec.name, "0")
+       raw = yield cli.api_info(spec.name)
+       returnValue(raw)
+
+   deferred = bootstrap()
+   deferred.addCallback(lambda v: pprint.pprint(v))
+
+   reactor.run()
+
+
 Contributing
 =========
 
