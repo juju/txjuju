@@ -25,6 +25,9 @@ class ControllerConfig(
                   cloud_name=None, default_series=None, admin_secret=None):
         """Return a new controller config for the given info.
 
+        All arguments must be values that juju will accept for the
+        respective meaning (e.g. name -> an acceptable controller name).
+
         @param name: The name of the controller.
         @param type: The controller's provider type.
         @param cloud_name: The name of the cloud (defaults to <name>-<type>).
@@ -45,7 +48,8 @@ class ControllerConfig(
 
     def __new__(cls, name, cloud, bootstrap=None):
         """
-        @param name: The name of the controller.
+        @param name: The name of the controller.  It must be a name that
+            juju will accept for a controller.
         @param cloud: The controller's cloud config (or the raw data
             to make one).
         @param bootstrap: The controller's bootstrap config (or the raw
@@ -82,12 +86,19 @@ class CloudConfig(
     def __new__(cls, name, type=None, endpoint=None,
                 auth_types=None, credentials=None):
         """
-        @param name: The cloud's user-defined ID.
-        @param type: The provider type (defaults to the name).
-        @param endpoint: The endpoint to use, if needed.
+        All arguments must be values that juju will accept for the
+        respective meaning (e.g. name -> an acceptable cloud name).
+
+        @param name: The cloud's user-defined ID, e.g. "my-cloud".
+        @param type: The provider type, e.g. lxd, maas
+            (defaults to the name).
+        @param endpoint: The endpoint to use, if needed,  Any URL or
+            hostname is okay, as long as the provider supports it.
         @param auth_types: The set of supported auth types, if needed.
+            <CURRENTLY NOT SUPPORTED>
         @param credentials: The set of credentials configured
             for this cloud, if any.
+            <CURRENTLY NOT SUPPORTED>
         """
         name = unicode(name) if name else None
         if type is None:
@@ -123,6 +134,9 @@ class BootstrapConfig(
 
     def __new__(cls, default_series=None, admin_secret=None):
         """
+        All arguments must be values that juju will accept for the
+        respective meaning.
+
         @param default_series: The OS series to provision by default.
             If not provided, it defaults to trusty.
         @param admin_secret: The password to use for the admin user,
