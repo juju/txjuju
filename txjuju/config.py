@@ -39,22 +39,28 @@ class ControllerConfig(
         endpoint = auth_types = credentials = None
         return cls(
             name,
-            CloudConfig(cloud_name, type, endpoint, auth_types, credentials),
-            BootstrapConfig(default_series, admin_secret),
+            (cloud_name, type, endpoint, auth_types, credentials),
+            (default_series, admin_secret),
             )
 
     def __new__(cls, name, cloud, bootstrap=None):
         """
         @param name: The name of the controller.
-        @param cloud: The controller's cloud config.
-        @param bootstrap: The controller's bootstrap config, if any.
+        @param cloud: The controller's cloud config (or the raw data
+            to make one).
+        @param bootstrap: The controller's bootstrap config (or the raw
+            data to make one), if any.
         """
         name = unicode(name) if name else None
-        cloud = CloudConfig._make(cloud) if cloud else None
+
+        if not isinstance(cloud, CloudConfig):
+            cloud = CloudConfig(*cloud) if cloud else None
+
         if bootstrap is None:
             bootstrap = BootstrapConfig("")
-        else:
-            bootstrap = BootstrapConfig._make(bootstrap)
+        elif not isinstance(bootstrap, BootstrapConfig):
+            bootstrap = BootstrapConfig(*bootstrap)
+
         return super(ControllerConfig, cls).__new__(
             cls, name, cloud, bootstrap)
 

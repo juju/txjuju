@@ -85,6 +85,26 @@ class ControllerConfigTest(unittest.TestCase):
 
         self.assertEqual(cfg, (u"spam", cloud, bootstrap))
 
+    def test_cloud_iterable(self):
+        """ControllerConfig() supports cloud as an iterable."""
+        cloud = CloudConfig("lxd")
+        bootstrap = BootstrapConfig("xenial")
+        cfg1 = ControllerConfig("spam", tuple(cloud), bootstrap)
+        cfg2 = ControllerConfig("spam", list(cloud), bootstrap)
+
+        self.assertEqual(cfg1.cloud, cloud)
+        self.assertEqual(cfg2.cloud, cloud)
+
+    def test_bootstrap_iterable(self):
+        """ControllerConfig() supports bootstrap as an iterable."""
+        cloud = CloudConfig("lxd")
+        bootstrap = BootstrapConfig("xenial")
+        cfg1 = ControllerConfig("spam", cloud, tuple(bootstrap))
+        cfg2 = ControllerConfig("spam", cloud, list(bootstrap))
+
+        self.assertEqual(cfg1.cloud, cloud)
+        self.assertEqual(cfg2.cloud, cloud)
+
     def test_missing_name(self):
         """ControllerConfig() fails if name is None or empty."""
         cloud = CloudConfig("lxd")
