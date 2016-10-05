@@ -15,3 +15,33 @@ much beyond the needs of Landscape.  The official `Python bindings for
 Juju <https://github.com/juju-solutions/python-libjuju>`_ will usually
 offer a better experience.  At some point ``python-libjuju`` may
 entirely supercede txjuju.
+
+
+Contributing
+=========
+
+If you'd like to contribute to txjuju, feel free to open an issue or
+send us a pull request.  As far as borrowing from txjuju goes, the
+code is LGPLv3-licensed.
+
+Packaging
+---------
+
+A Python package may be created using ``python2 setup.py sdist``.
+For building a debian package see ``BUILD`` and ``build.sh``.
+
+Style
+---------
+
+The txjuju code follows PEP 8.  It is a good idea to frequently run
+something like `flake8 <https://pypi.python.org/pypi/flake8>`_ when
+making changes.  Other txjuju-specific guidelines:
+
+* use double quotes for strings
+* test methods should have docstrings
+
+Testing
+---------
+
+To run the test suite, run ``make test`` or
+``python2 -m unittest txjuju.tests.test_XXX``.
