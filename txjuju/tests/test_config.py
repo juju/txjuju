@@ -43,6 +43,7 @@ class ConfigTest(_ConfigTest, unittest.TestCase):
             name, "lxd", "my-lxd", "xenial", "pw")
         cfg = Config(controller)
         cfg.write(self.cfgdir, self.version)
+        return cfg
 
     def test_write_cfgdir_missing(self):
         """Config.write() creates the config dir if it is missing."""
@@ -89,6 +90,14 @@ class ConfigTest(_ConfigTest, unittest.TestCase):
                     }
                 }
              })
+
+    def test_write_no_clobber_same_config_already_exists(self):
+        """Config.write() fails if clobber is False and the config files
+        are already there, even if they are the same."""
+        cfg = self.populate_cfgdir("spam")
+
+        with self.assertRaises(RuntimeError):
+            cfg.write(self.cfgdir, self.version, clobber=False)
 
     def test_write_no_clobber_no_collision(self):
         """Config.write() works fine if clobber is False and no config
