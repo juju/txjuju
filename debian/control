@@ -17,10 +17,19 @@ Package: python-txjuju
 Architecture: any
 Depends: ${python:Depends}, ${misc:Depends}, ${extra:Depends},
          ${shlibs:Depends},
+         python-fixtures,
+         python-testtools,
          python-twisted-core (>= 16.0.0),
          python-yaml
 Description: A twisted-based Juju client.
 
+# TODO: Add a separate package for txjuju/testing.py?
+# This would entail a second package entry here like the following,
+# as well as changes in setup.py and the addition of debian/*.install
+# files for both packages.  At that point we'd also remove the two
+# testing-related packages from "Depends:" above.  Ultimately it
+# probably isn't worth the trouble and extra complexity.
+#
 #Package: python-txjuju-testing
 #Architecture: any
 #Depends: ${python:Depends}, ${misc:Depends}, ${extra:Depends},

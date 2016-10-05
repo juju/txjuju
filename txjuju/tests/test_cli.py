@@ -6,9 +6,9 @@ import json
 import yaml
 from mocker import MockerTestCase
 from twisted.internet.defer import inlineCallbacks
-from txjuju_testing import TwistedTestCase
 
 from txjuju.cli import Juju1CLI, Juju2CLI, CLIError
+from txjuju.testing import TwistedTestCase
 
 
 class Juju1CLITest(TwistedTestCase, MockerTestCase):

@@ -5,13 +5,13 @@ from datetime import timedelta
 import yaml
 from twisted.trial.unittest import TestCase
 from twisted.test.proto_helpers import MemoryReactorClock
-from txjuju_testing.api import FakeAPIBackend
 
-from txjuju.protocol import APIClientFactory
 from txjuju.api import (
     Endpoint, Juju1APIClient, Juju2APIClient, MACHINE_SCOPE)
 from txjuju.errors import (
     APIRequestError, InvalidAPIEndpointAddress, AllWatcherStoppedError)
+from txjuju.protocol import APIClientFactory
+from txjuju.testing.api import FakeAPIBackend
 
 
 class EndpointTest(TestCase):

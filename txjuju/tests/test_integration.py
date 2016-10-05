@@ -5,10 +5,10 @@ from fixtures import TestWithFixtures
 from twisted.internet import reactor
 from twisted.trial.unittest import TestCase
 from twisted.internet.defer import inlineCallbacks
-from txjuju_testing.fakejuju import FakeJujuFixture
 
-from txjuju.errors import APIAuthError, APIRequestError
 from txjuju.api import Endpoint, Juju1APIClient
+from txjuju.errors import APIAuthError, APIRequestError
+from txjuju.testing.fakejuju import FakeJujuFixture
 
 
 class Juju1APIClientIntegrationTest(TestCase, TestWithFixtures):
