@@ -9,3 +9,8 @@ coverage:
 	# sudo apt-get install python-coverage
 	$(PYTHON) -m coverage run --branch --source txjuju -m unittest discover -t . -s txjuju/tests
 	$(PYTHON) -m coverage report
+
+.PHONY: lint
+lint:
+	# sudo apt-get install python-flake8
+	$(PYTHON) -m flake8 .
