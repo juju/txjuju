@@ -7,7 +7,7 @@ except ImportError:
 
 
 basedir = os.path.abspath(os.path.dirname(__file__) or '.')
-README = os.path.join(basedir, 'README.md')
+README = os.path.join(basedir, 'README.rst')
 
 # required data
 
