@@ -1,6 +1,6 @@
-*********
+***********************************
 txjuju: a twisted-based Juju client
-*********
+***********************************
 
 ``txjuju`` provides `twisted <https://twistedmatrix.com/>`_-based tools
 for interacting with `Juju <http://www.ubuntu.com/cloud/juju>`_.  This
@@ -18,7 +18,7 @@ may entirely supercede txjuju.
 
 
 Key Components
-=========
+==============
 
 Here are the essential classes of txjuju:
 
@@ -32,10 +32,10 @@ For more information see `DOC.rst <DOC.rst>`_.
 
 
 Example Usage
-=========
+=============
 
 API Client
----------
+----------
 
 .. code:: python
 
@@ -56,7 +56,7 @@ API Client
    reactor.run()
 
 CLI Wrapper
----------
+-----------
 
 .. code:: python
 
@@ -84,7 +84,7 @@ CLI Wrapper
 
 
 Contributing
-=========
+============
 
 If you'd like to contribute to txjuju, feel free to open an issue or
 send us a pull request.  As far as borrowing from txjuju goes, the

@@ -1,9 +1,9 @@
-*********
+********************
 txjuju Documentation
-*********
+********************
 
 Package Content
-=========
+===============
 
 Essential Modules:
 
@@ -77,10 +77,10 @@ In `txjuju.cli <txjuju/cli.py>`_:
 
 
 API Client
-=========
+==========
 
 Example Usage
----------
+-------------
 
 .. code:: python
 
@@ -101,7 +101,7 @@ Example Usage
    reactor.run()
 
 API Data Classes
----------
+----------------
 
 The API client methods produce these.  They align closely with `Juju's
 API data types <https://godoc.org/github.com/juju/juju/apiserver/params>`_.
@@ -133,7 +133,7 @@ In `txjuju.api_data <txjuju/api_data.py>`_:
 * ``RunResult(stdout, stderr, code, error)``
 
 Client-related Classes
----------
+----------------------
 
 All of the following methods return twisted deferreds that call back
 with values of the indicated type.
@@ -192,10 +192,10 @@ In `txjuju.api <txjuju/api.py>`_:
 
 
 CLI Wrapper
-=========
+===========
 
 Example Usage
----------
+-------------
 
 .. code:: python
 
@@ -219,7 +219,7 @@ Example Usage
    reactor.run()
 
 Wrapper-related Classes
----------
+-----------------------
 
 In `txjuju.cli <txjuju/cli.py>`_:
 
@@ -256,5 +256,3 @@ In `txjuju.cli <txjuju/cli.py>`_:
     -> (deferred)
   * ``get_juju_status(modelname, output_file_path`` -> (deferred)
   * ``get_all_logs(modelname, destdir, filename)`` -> (deferred)
-
-
