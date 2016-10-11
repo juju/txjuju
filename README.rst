@@ -11,10 +11,10 @@ Python 3 is on the radar.
 Note that only a portion of Juju's capability is exposed in txjuju.
 This is because the code originates in the
 `Landscape <https://landscape.canonical.com/>`_ project and did not grow
-much beyond the needs of Landscape.  The official `Python bindings for
-Juju <https://github.com/juju-solutions/python-libjuju>`_ will usually
-offer a better experience.  At some point ``python-libjuju`` may
-entirely supercede txjuju.
+much beyond the needs of Landscape.  The official Python bindings for
+Juju (`python-libjuju <https://github.com/juju-solutions/python-libjuju>`_)
+will usually offer a better experience.  At some point python-libjuju
+may entirely supercede txjuju.
 
 
 Key Components
@@ -22,13 +22,13 @@ Key Components
 
 Here are the essential classes of txjuju:
 
-* ``txjuju.api.Endpoint``
-* ``txjuju.api.Juju2APIClient`` and ``txjuju.api.Juju1APIClient``
-* ``txjuju.cli.Juju2CLI`` and ``txjuju.cli.Juju1CLI``
+* `txjuju.api.Endpoint <txjuju/api.py>`_
+* `txjuju.api.Juju2APIClient <txjuju/api.py>`_ and `txjuju.api.Juju1APIClient <txjuju/api.py>`_
+* `txjuju.cli.Juju2CLI <txjuju/cli.py>`_ and `txjuju.cli.Juju1CLI <txjuju/cli.py>`_
 
-Additionally, ``txjuju.prepare_for_bootstrap()`` is especially useful.
+Additionally, `txjuju.prepare_for_bootstrap() <txjuju/__init__.py>`_ is especially useful.
 
-For more information see DOC.rst.
+For more information see `DOC.rst <DOC.rst>`_.
 
 
 Example Usage
@@ -94,7 +94,8 @@ Packaging
 ---------
 
 A Python package may be created using ``python2 setup.py sdist``.
-For building a debian package see ``BUILD`` and ``build.sh``.
+For building a debian package see `BUILD <BUILD>`_ and
+`build.sh <build.sh>`_.
 
 Style
 ---------
