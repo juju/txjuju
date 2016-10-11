@@ -37,6 +37,8 @@ Example Usage
 API Client
 ---------
 
+.. code:: python
+
    from twisted.internet import reactor
    from twisted.internet.defer import inlineCallbacks
    from txjuju.api import Endpoint
@@ -55,6 +57,8 @@ API Client
 
 CLI Wrapper
 ---------
+
+.. code:: python
 
    import pprint
    from twisted.internet import reactor
