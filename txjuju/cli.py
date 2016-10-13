@@ -67,7 +67,7 @@ class BootstrapSpec(object):
         return "{}({})".format(
             type(self).__name__,
             ', '.join("{}={!r}".format(name, getattr(self, name))
-                                       for name in self._fields),
+                      for name in self._fields),
             )
 
     def __eq__(self, other):

@@ -92,7 +92,6 @@ class TestBootstrapSpec(unittest.TestCase):
 
         self.assertTrue(spec == other)
 
-
     def test___eq___same_with_sub_class(self):
         spec = BootstrapSpec("my-env", "lxd")
         other = type("SubSpec", (BootstrapSpec,), {})("my-env", "lxd")
