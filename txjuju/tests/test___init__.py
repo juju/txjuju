@@ -38,6 +38,10 @@ class PrepareForBootstrapTests(unittest.TestCase):
         super(PrepareForBootstrapTests, self).tearDown()
 
     def test_juju2(self):
+        """
+        prepare_for_bootstrap() for Juju 2.x results in no files.
+        This may change in the future.
+        """
         spec = cli.BootstrapSpec("spam", "lxd")
         version = "2.0.0"
         filename = txjuju.prepare_for_bootstrap(spec, version, self.cfgdir)
@@ -46,6 +50,10 @@ class PrepareForBootstrapTests(unittest.TestCase):
         self.assertEqual(os.listdir(self.cfgdir), [])
 
     def test_juju1(self):
+        """
+        prepare_for_bootstrap() for Juju 1.x results in
+        an environments.yaml file.
+        """
         spec = cli.BootstrapSpec("spam", "lxd")
         version = "1.25.6"
         filename = txjuju.prepare_for_bootstrap(spec, version, self.cfgdir)
