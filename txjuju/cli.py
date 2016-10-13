@@ -156,7 +156,7 @@ class Juju2CLI(object):
         return self._run(
             ["bootstrap", "-v", "--no-gui", "--to", bootstrap_machine,
              "--auto-upgrade=false", "--config", bootstrap_config,
-             juju_controller_name, cloud_name])
+             cloud_name, juju_controller_name])
 
     def api_info(self, juju_controller_name):
         """Run get api info for the specified model/controller.

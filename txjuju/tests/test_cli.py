@@ -270,14 +270,14 @@ class Juju2CLITest(TwistedTestCase, MockerTestCase):
 
         out, _ = yield self.cli.bootstrap(
             self.model_name, self.bootstrap_machine, self.bootstrap_cloud)
-        self.assertEqual(
-            "bootstrap -v --no-gui --to {machine} --auto-upgrade=false "
-            "--config {home}/bootstrap.yaml {model_name} "
-            "landscape-maas".format(
-                model_name=self.model_name,
-                machine=self.bootstrap_machine,
-                home=self.juju_data),
-            out)
+
+        expected = ("bootstrap -v --no-gui --to {machine} "
+                    "--auto-upgrade=false --config {home}/bootstrap.yaml "
+                    "landscape-maas {model_name}"
+                    ).format(model_name=self.model_name,
+                             machine=self.bootstrap_machine,
+                             home=self.juju_data)
+        self.assertEqual(expected, out)
 
     @inlineCallbacks
     def test_auto_upgrades_disabled(self):
