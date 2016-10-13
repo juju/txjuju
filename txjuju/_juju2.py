@@ -71,7 +71,7 @@ class ConfigWriter(object):
             raise NotImplementedError
         else:
             config = {
-                "type": cloud.type,
+                "type": cloud.driver,
                 }
             if cloud.endpoint:
                 config["endpoint"] = str(cloud.endpoint)

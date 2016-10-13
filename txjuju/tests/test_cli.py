@@ -58,7 +58,7 @@ class TestBootstrapSpec(unittest.TestCase):
         spec = BootstrapSpec("my-env", "lxd", "xenial", "pw")
 
         self.assertEqual(spec.name, "my-env")
-        self.assertEqual(spec.type, "lxd")
+        self.assertEqual(spec.driver, "lxd")
         self.assertEqual(spec.default_series, "xenial")
         self.assertEqual(spec.admin_secret, "pw")
 
@@ -66,7 +66,7 @@ class TestBootstrapSpec(unittest.TestCase):
         spec = BootstrapSpec("my-env", "lxd")
 
         self.assertEqual(spec.name, "my-env")
-        self.assertEqual(spec.type, "lxd")
+        self.assertEqual(spec.driver, "lxd")
         self.assertEqual(spec.default_series, "trusty")
         self.assertIsNone(spec.admin_secret)
 
@@ -74,7 +74,7 @@ class TestBootstrapSpec(unittest.TestCase):
         spec = BootstrapSpec("my-env", "lxd", "xenial", "pw")
         self.assertEqual(
             repr(spec),
-            ("BootstrapSpec(name='my-env', type='lxd', "
+            ("BootstrapSpec(name='my-env', driver='lxd', "
              "default_series='xenial', admin_secret='pw')"),
             )
 
@@ -82,7 +82,7 @@ class TestBootstrapSpec(unittest.TestCase):
         spec = BootstrapSpec("my-env", "lxd")
         self.assertEqual(
             repr(spec),
-            ("BootstrapSpec(name='my-env', type='lxd', "
+            ("BootstrapSpec(name='my-env', driver='lxd', "
              "default_series='trusty', admin_secret=None)"),
             )
 
@@ -100,7 +100,7 @@ class TestBootstrapSpec(unittest.TestCase):
 
     def test___eq___same_with_other_class(self):
         spec = BootstrapSpec("my-env", "lxd", "trusty", "pw")
-        other_cls = namedtuple("Sub", "name type default_series admin_secret")
+        other_cls = namedtuple("Sub", "name driver default_series admin_secret")
         other = other_cls("my-env", "lxd", "trusty", "pw")
 
         self.assertTrue(spec == other)

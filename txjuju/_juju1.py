@@ -41,7 +41,7 @@ class ConfigWriter(object):
         @param env: A JujuControllerConfig to serialize for Juju 1.x.
         """
         config = {
-            "type": env.cloud.type,
+            "type": env.cloud.driver,
             }
         if env.bootstrap.default_series:
             config["default-series"] = env.bootstrap.default_series

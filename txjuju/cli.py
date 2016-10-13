@@ -44,10 +44,10 @@ class BootstrapSpec(object):
 
     DEFAULT_SERIES = "trusty"
 
-    def __init__(self, name, type, default_series=None, admin_secret=None):
+    def __init__(self, name, driver, default_series=None, admin_secret=None):
         """
         @param name: The name of the controller to bootstrap.
-        @param type: The provider type to use.
+        @param driver: The provider type to use.
         @param default_series: The OS series to provision by default.
             If not provided, it defaults to trusty.
         @param admin_secret: The password to use for the admin user,
@@ -57,7 +57,7 @@ class BootstrapSpec(object):
             default_series = self.DEFAULT_SERIES
 
         self.name = name
-        self.type = type
+        self.driver = driver
         self.default_series = default_series
         self.admin_secret = admin_secret
 
@@ -88,8 +88,8 @@ class BootstrapSpec(object):
         """Return the JujuConfig corresponding to this spec."""
         controller = config.ControllerConfig.from_info(
             self.name,
-            self.type,
-            cloud_name=self.type,
+            self.driver,
+            cloud_name=self.driver,
             default_series=self.default_series,
             admin_secret=self.admin_secret,
             )

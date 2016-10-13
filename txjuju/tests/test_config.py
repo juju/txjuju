@@ -350,8 +350,8 @@ class ControllerConfigTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             ControllerConfig.from_info("", "lxd")
 
-    def test_from_info_missing_type(self):
-        """ControllerConfig.from_info() fails if type is None or empty."""
+    def test_from_info_missing_driver(self):
+        """ControllerConfig.from_info() fails if driver is None or empty."""
         with self.assertRaises(ValueError):
             ControllerConfig.from_info("spam", None)
         with self.assertRaises(ValueError):
@@ -431,7 +431,7 @@ class CloudConfigTest(unittest.TestCase):
         cfg = CloudConfig(u"spam", u"lxd", u"localhost:8080", None, None)
 
         self.assertEqual(cfg.name, u"spam")
-        self.assertEqual(cfg.type, u"lxd")
+        self.assertEqual(cfg.driver, u"lxd")
         self.assertEqual(cfg.endpoint, u"localhost:8080")
         self.assertIsNone(cfg.auth_types)
         self.assertIsNone(cfg.credentials)
@@ -441,7 +441,7 @@ class CloudConfigTest(unittest.TestCase):
         cfg = CloudConfig(u"lxd")
 
         self.assertEqual(cfg.name, u"lxd")
-        self.assertEqual(cfg.type, u"lxd")
+        self.assertEqual(cfg.driver, u"lxd")
         self.assertIsNone(cfg.endpoint)
         self.assertIsNone(cfg.auth_types)
         self.assertIsNone(cfg.credentials)
@@ -457,7 +457,7 @@ class CloudConfigTest(unittest.TestCase):
         cfg = CloudConfig("spam", "lxd", "localhost:8080")
 
         self.assertEqual(cfg.name, u"spam")
-        self.assertEqual(cfg.type, u"lxd")
+        self.assertEqual(cfg.driver, u"lxd")
         self.assertEqual(cfg.endpoint, u"localhost:8080")
         self.assertIsNone(cfg.auth_types)
         self.assertIsNone(cfg.credentials)
@@ -469,8 +469,8 @@ class CloudConfigTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             CloudConfig("", "lxd")
 
-    def test_missing_type(self):
-        """CloudConfig() fails when type is empty."""
+    def test_missing_driver(self):
+        """CloudConfig() fails when driver is empty."""
         with self.assertRaises(ValueError):
             CloudConfig("spam", "")
 
