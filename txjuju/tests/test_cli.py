@@ -16,7 +16,7 @@ from txjuju.errors import CLIError
 from txjuju.testing import TwistedTestCase
 
 
-class GetExecutableTests(unittest.TestCase):
+class GetExecutableTest(unittest.TestCase):
 
     class CLI(object):
         CFGDIR_ENVVAR = "JUJU_HOME"
@@ -67,7 +67,7 @@ class GetExecutableTests(unittest.TestCase):
             get_executable("spam", self.CLI, "")
 
 
-class TestBootstrapSpec(unittest.TestCase):
+class BootstrapSpecTest(unittest.TestCase):
 
     def test_full(self):
         """
@@ -199,7 +199,7 @@ class TestBootstrapSpec(unittest.TestCase):
             )
 
 
-class TestAPIInfo(unittest.TestCase):
+class APIInfoTest(unittest.TestCase):
 
     def test_full(self):
         """
