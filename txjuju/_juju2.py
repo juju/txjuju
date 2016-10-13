@@ -128,7 +128,7 @@ class CLIHooks(object):
             args += ["--no-gui"]
         if cfgfile:
             args += ["--config", cfgfile]
-        args += [spec.name, spec.driver]
+        args += [spec.driver, spec.name]
         return args
 
     def get_api_info_args(self, controller_name=None):
