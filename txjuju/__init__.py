@@ -1,9 +1,17 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
-# Expose all the error classes at the top level.
 from .errors import (
     CLIError, APIRequestError, APIAuthError, APIRetriableError,
     AllWatcherStoppedError, InvalidAPIEndpointAddress)
+
+
+__all__ = [
+    "__version__", "JUJU1", "JUJU2",
+    "get_cli_class", "prepare_for_bootstrap",
+    # errors
+    "CLIError", "APIRequestError", "APIAuthError", "APIRetriableError",
+    "AllWatcherStoppedError", "InvalidAPIEndpointAddress",
+    ]
 
 
 __version__ = "0.9.0a1"
@@ -24,6 +32,19 @@ def get_cli_class(release=JUJU1):
         raise ValueError("unsupported release {!r}".format(release))
 
 
-# Appease pyflakes
-(CLIError, APIRequestError, APIAuthError, APIRetriableError,
-    AllWatcherStoppedError, InvalidAPIEndpointAddress)
+def prepare_for_bootstrap(spec, version, cfgdir):
+    """Return the bootstrap config filename after creating configs.
+
+    Note that not all Juju versions have a bootstrap config.  In that
+    case None will be returned.
+
+    @param spec: The txjuju.cli.BootstrapSpec for which to prepare.
+    @param version: The Juju version to prepare for.
+    @param cfgdir: The Juju config directory to use.
+    """
+    # For now we don't bother with config files for 2.x.
+    if version.startswith("2."):
+        return None
+    cfg = spec.config()
+    filenames = cfg.write(cfgdir, version)
+    return filenames.get(spec.name) if filenames else None

@@ -17,6 +17,11 @@ class Config(object):
         """
         self._controllers = controllers
 
+    @property
+    def controllers(self):
+        """Return the controller configs."""
+        return list(self._controllers)
+
     def write(self, cfgdir, version, clobber=False):
         """Save the config to disk.
 
@@ -54,7 +59,7 @@ class ControllerConfig(
     DEFAULT_SERIES = "trusty"
 
     @classmethod
-    def from_info(cls, name, type,
+    def from_info(cls, name, driver,
                   cloud_name=None, default_series=None, admin_secret=None):
         """Return a new controller config for the given info.
 
@@ -62,20 +67,20 @@ class ControllerConfig(
         respective meaning (e.g. name -> an acceptable controller name).
 
         @param name: The name of the controller.
-        @param type: The controller's provider type.
-        @param cloud_name: The name of the cloud (defaults to <name>-<type>).
+        @param driver: The controller's provider type.
+        @param cloud_name: The name of the cloud (defaults to <name>-<driver>).
         @param default_series: The OS series to provision by default.
             If not provided, it defaults to trusty.
         @param admin_secret: The password to use for the admin user,
             if any.
         """
-        if cloud_name is None and name and type:
-            cloud_name = "{}-{}".format(name, type)
+        if cloud_name is None and name and driver:
+            cloud_name = "{}-{}".format(name, driver)
         # TODO Sort these out as soon as we need them.
         endpoint = auth_types = credentials = None
         return cls(
             name,
-            (cloud_name, type, endpoint, auth_types, credentials),
+            (cloud_name, driver, endpoint, auth_types, credentials),
             (default_series, admin_secret),
             )
 
@@ -113,17 +118,17 @@ class ControllerConfig(
 
 class CloudConfig(
         namedtuple("CloudConfig",
-                   "name type endpoint auth_types credentials")):
+                   "name driver endpoint auth_types credentials")):
     """An encapsulation of the local config for a single cloud."""
 
-    def __new__(cls, name, type=None, endpoint=None,
+    def __new__(cls, name, driver=None, endpoint=None,
                 auth_types=None, credentials=None):
         """
         All arguments must be values that juju will accept for the
         respective meaning (e.g. name -> an acceptable cloud name).
 
         @param name: The cloud's user-defined ID, e.g. "my-cloud".
-        @param type: The provider type, e.g. lxd, maas
+        @param driver: The provider driver, e.g. lxd, maas
             (defaults to the name).
         @param endpoint: The endpoint to use, if needed,  Any URL or
             hostname is okay, as long as the provider supports it.
@@ -134,23 +139,23 @@ class CloudConfig(
             <CURRENTLY NOT SUPPORTED>
         """
         name = unicode(name) if name else None
-        if type is None:
-            type = name
-        type = unicode(type) if type else None
+        if driver is None:
+            driver = name
+        driver = unicode(driver) if driver else None
         endpoint = unicode(endpoint) if endpoint else None
         # TODO Add provider-specific abstractions to support auth_types?
         # TODO Add support for auth_types and credentials as soon as needed.
         auth_types = tuple(auth_types) if auth_types else None
         credentials = tuple(credentials) if credentials else None
         return super(CloudConfig, cls).__new__(
-            cls, name, type, endpoint, auth_types, credentials)
+            cls, name, driver, endpoint, auth_types, credentials)
 
     def __init__(self, *args, **kwargs):
         super(CloudConfig, self).__init__(*args, **kwargs)
         if not self.name:
             raise ValueError("missing name")
-        if not self.type:
-            raise ValueError("missing type")
+        if not self.driver:
+            raise ValueError("missing driver")
         # TODO Add support for auth_types and credentials as soon as needed.
         if self.auth_types is not None or self.credentials is not None:
             raise NotImplementedError

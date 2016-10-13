@@ -1,14 +1,276 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
-import os
+from collections import namedtuple
 import json
+import os
+import unittest
 
 import yaml
 from mocker import MockerTestCase
 from twisted.internet.defer import inlineCallbacks
 
-from txjuju.cli import Juju1CLI, Juju2CLI, CLIError
+from txjuju import config, _utils
+from txjuju.cli import (
+    Juju1CLI, Juju2CLI, BootstrapSpec, APIInfo, get_executable)
+from txjuju.errors import CLIError
 from txjuju.testing import TwistedTestCase
+
+
+class GetExecutableTest(unittest.TestCase):
+
+    class CLI(object):
+        CFGDIR_ENVVAR = "JUJU_HOME"
+
+    def test_full(self):
+        """
+        get_executable() works when all args are provided.
+        """
+        exe = get_executable("spam", self.CLI, "/tmp", {"SPAM": "eggs"})
+
+        self.assertEqual(
+            exe,
+            _utils.Executable("spam", {"SPAM": "eggs", "JUJU_HOME": "/tmp"}))
+
+    def test_minimal(self):
+        """
+        get_executable() works when given minimal args.
+        """
+        exe = get_executable("spam", self.CLI, "/tmp")
+
+        self.assertEqual(exe.filename, "spam")
+        self.assertEqual(exe.envvars["JUJU_HOME"], "/tmp")
+        self.assertNotEqual(exe.envvars, {"JUJU_HOME": "/tmp"})
+
+    def test_missing_filename(self):
+        """
+        get_executable() fails if filename is None or empty.
+        """
+        with self.assertRaises(ValueError):
+            get_executable("", self.CLI, "/tmp")
+        with self.assertRaises(ValueError):
+            get_executable(None, self.CLI, "/tmp")
+
+    def test_missing_version_cli(self):
+        """
+        get_executable() fails if version_cli is None.
+        """
+        with self.assertRaises(ValueError):
+            get_executable("spam", None, "/tmp")
+
+    def test_missing_cfgdir(self):
+        """
+        get_executable() fails if cfgdir is None or empty.
+        """
+        with self.assertRaises(ValueError):
+            get_executable("spam", self.CLI, None)
+        with self.assertRaises(ValueError):
+            get_executable("spam", self.CLI, "")
+
+
+class BootstrapSpecTest(unittest.TestCase):
+
+    def test_full(self):
+        """
+        BootstrapSpec() works when all args are provided.
+        """
+        spec = BootstrapSpec("my-env", "lxd", "xenial", "pw")
+
+        self.assertEqual(spec.name, "my-env")
+        self.assertEqual(spec.driver, "lxd")
+        self.assertEqual(spec.default_series, "xenial")
+        self.assertEqual(spec.admin_secret, "pw")
+
+    def test_minimal(self):
+        """
+        BootstrapSpec() works with minimal args.
+        """
+        spec = BootstrapSpec("my-env", "lxd")
+
+        self.assertEqual(spec.name, "my-env")
+        self.assertEqual(spec.driver, "lxd")
+        self.assertEqual(spec.default_series, "trusty")
+        self.assertIsNone(spec.admin_secret)
+
+    def test_repr_full(self):
+        """
+        The repr of BootstrapSpec is correct.
+        """
+        spec = BootstrapSpec("my-env", "lxd", "xenial", "pw")
+        self.assertEqual(
+            repr(spec),
+            ("BootstrapSpec(name='my-env', driver='lxd', "
+             "default_series='xenial', admin_secret='pw')"),
+            )
+
+    def test_repr_minimal(self):
+        """
+        The repr of BootstrapSpec is correct even if some fields are missing.
+        """
+        spec = BootstrapSpec("my-env", "lxd")
+        self.assertEqual(
+            repr(spec),
+            ("BootstrapSpec(name='my-env', driver='lxd', "
+             "default_series='trusty', admin_secret=None)"),
+            )
+
+    def test___eq___same_with_base_class(self):
+        """
+        BootstrapSpec == other is True when they are the same
+        and have the same class.
+        """
+        spec = BootstrapSpec("my-env", "lxd")
+        other = BootstrapSpec("my-env", "lxd")
+
+        self.assertTrue(spec == other)
+
+    def test___eq___same_with_sub_class(self):
+        """
+        BootstrapSpec == other is True when they are the same,
+        even if the other is a BootstrapSpec subclass.
+        """
+        spec = BootstrapSpec("my-env", "lxd")
+        other = type("SubSpec", (BootstrapSpec,), {})("my-env", "lxd")
+
+        self.assertTrue(spec == other)
+
+    def test___eq___same_with_other_class(self):
+        """
+        BootstrapSpec == other is True when they are the same,
+        even if the classes are different.
+        """
+        spec = BootstrapSpec("my-env", "lxd", "trusty", "pw")
+        other_cls = namedtuple("Sub",
+                               "name driver default_series admin_secret")
+        other = other_cls("my-env", "lxd", "trusty", "pw")
+
+        self.assertTrue(spec == other)
+
+    def test___eq___identity(self):
+        """
+        For BootstrapSpec, spec == spec is True.
+        """
+        spec = BootstrapSpec("my-env", "lxd")
+
+        self.assertTrue(spec == spec)
+
+    def test___eq___different(self):
+        """
+        BootstrapSpec == other is False when they differ.
+        """
+        spec = BootstrapSpec("my-env", "lxd")
+        other = BootstrapSpec("my-env", "spam")
+
+        self.assertFalse(spec == other)
+
+    def test___ne___same(self):
+        """
+        BootstrapSpec != other is False when they are the same.
+        """
+        spec = BootstrapSpec("my-env", "lxd")
+        other = BootstrapSpec("my-env", "lxd")
+
+        self.assertFalse(spec != other)
+
+    def test___ne___different(self):
+        """
+        BootstrapSpec != other is True when they differ.
+        """
+        spec = BootstrapSpec("my-env", "lxd")
+        other = BootstrapSpec("my-env", "spam")
+
+        self.assertTrue(spec != other)
+
+    def test_config(self):
+        """
+        BootstrapSpec.config() returns a Config containing
+        a ControllerConfig corresponding to the bootstrap spec.
+        """
+        spec = BootstrapSpec("my-env", "lxd", "xenial", "pw")
+        cfg = spec.config()
+
+        self.assertEqual(len(cfg.controllers), 1)
+        self.assertEqual(
+            cfg.controllers[0],
+            config.ControllerConfig(
+                "my-env",
+                config.CloudConfig("lxd", "lxd"),
+                config.BootstrapConfig("xenial", "pw"),
+                ),
+            )
+
+
+class APIInfoTest(unittest.TestCase):
+
+    def test_full(self):
+        """
+        APIInfo() works with all args provided.
+        """
+        endpoints = (u"host2", u"host1")
+        info = APIInfo(endpoints, u"admin", u"pw", u"some-uuid")
+
+        self.assertEqual(info.endpoints, (u"host2", u"host1"))
+        self.assertEqual(info.user, u"admin")
+        self.assertEqual(info.password, u"pw")
+        self.assertEqual(info.model_uuid, u"some-uuid")
+
+    def test_minimal(self):
+        """
+        APIInfo() works with minimal args.
+        """
+        endpoints = (u"host",)
+        info = APIInfo(endpoints, u"admin", u"pw")
+
+        self.assertEqual(info.endpoints, (u"host",))
+        self.assertEqual(info.user, u"admin")
+        self.assertEqual(info.password, u"pw")
+        self.assertIsNone(info.model_uuid)
+
+    def test_conversion(self):
+        """
+        APIInfo() converts the args to unicode.
+        """
+        endpoints = ["host2", "host1"]
+        info = APIInfo(endpoints, "admin", "pw", "some-uuid")
+
+        self.assertEqual(info.endpoints, (u"host2", u"host1"))
+        self.assertEqual(info.user, u"admin")
+        self.assertEqual(info.password, u"pw")
+        self.assertEqual(info.model_uuid, u"some-uuid")
+
+    def test_missing_endpoints(self):
+        """
+        APIInfo() fails if endpoints is None or empty.
+        """
+        with self.assertRaises(ValueError):
+            APIInfo(None, "admin", "pw")
+        with self.assertRaises(ValueError):
+            APIInfo([], "admin", "pw")
+
+    def test_missing_user(self):
+        """
+        APIInfo() fails if user is None or empty.
+        """
+        with self.assertRaises(ValueError):
+            APIInfo(["host"], None, "pw")
+        with self.assertRaises(ValueError):
+            APIInfo(["host"], "", "pw")
+
+    def test_missing_password(self):
+        """
+        APIInfo() fails if password is None or empty.
+        """
+        with self.assertRaises(ValueError):
+            APIInfo(["host"], "admin", None)
+        with self.assertRaises(ValueError):
+            APIInfo(["host"], "admin", "")
+
+    def test_address(self):
+        """
+        APIInfo.address holds the first endpoint.
+        """
+        info = APIInfo(["host2", "host1"], "admin", "pw")
+
+        self.assertEqual(info.address, "host2")
 
 
 class Juju1CLITest(TwistedTestCase, MockerTestCase):

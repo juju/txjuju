@@ -1,9 +1,10 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
-from cStringIO import StringIO
 import json
 import os
 import os.path
+from collections import namedtuple
+from cStringIO import StringIO
 
 import yaml
 from yaml import Loader
@@ -13,7 +14,122 @@ from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 from twisted.internet.protocol import ProcessProtocol
 from twisted.python import log
 
+from . import config, _utils
 from .errors import CLIError
+
+
+def get_executable(filename, version_cli, cfgdir, envvars=None):
+    """Return the Executable for the given juju binary.
+
+    @param filename: The path to the juju binary.
+    @param version_cli: The version-specific JujuXCLI to use.
+    @param cfgdir: The Juju config dir to use.
+    @param envvars: The additional environment variables to use.
+    """
+    if not version_cli:
+        raise ValueError("missing version_cli")
+    if not cfgdir:
+        raise ValueError("missing cfgdir")
+
+    if envvars is None:
+        envvars = os.environ
+    envvars = dict(envvars)
+    envvars[version_cli.CFGDIR_ENVVAR] = cfgdir
+
+    return _utils.Executable(filename, envvars)
+
+
+class BootstrapSpec(object):
+    """A specification of the information with which to bootstrap."""
+
+    DEFAULT_SERIES = "trusty"
+
+    def __init__(self, name, driver, default_series=None, admin_secret=None):
+        """
+        @param name: The name of the controller to bootstrap.
+        @param driver: The provider type to use.
+        @param default_series: The OS series to provision by default.
+            If not provided, it defaults to trusty.
+        @param admin_secret: The password to use for the admin user,
+            if any.
+        """
+        if default_series is None:
+            default_series = self.DEFAULT_SERIES
+
+        self.name = name
+        self.driver = driver
+        self.default_series = default_series
+        self.admin_secret = admin_secret
+
+    _fields = __init__.__code__.co_varnames[1:]
+
+    def __repr__(self):
+        return "{}({})".format(
+            type(self).__name__,
+            ', '.join("{}={!r}".format(name, getattr(self, name))
+                      for name in self._fields),
+            )
+
+    def __eq__(self, other):
+        for name in self._fields:
+            try:
+                other_val = getattr(other, name)
+            except AttributeError:
+                # TODO Return NotImplemented?
+                return False
+            if getattr(self, name) != other_val:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def config(self):
+        """Return the JujuConfig corresponding to this spec."""
+        controller = config.ControllerConfig.from_info(
+            self.name,
+            self.driver,
+            cloud_name=self.driver,
+            default_series=self.default_series,
+            admin_secret=self.admin_secret,
+            )
+        return config.Config(controller)
+
+
+class APIInfo(namedtuple("APIInfo", "endpoints user password model_uuid")):
+    """The API information provided by the Juju CLI."""
+
+    def __new__(cls, endpoints, user, password, model_uuid=None):
+        """
+        @param endpoints: The Juju server's API root endpoints.
+        @param user: The Juju user with which to connect.
+        @param password: The user's password.
+        @param model_uuid: The UUID of the model to manage via the API.
+            If this is None then only controller-level API facades
+            should be used.
+        """
+        if endpoints:
+            endpoints = tuple(unicode(ep) for ep in endpoints)
+        else:
+            endpoints = None
+        user = unicode(user) if user else None
+        password = unicode(password) if password else None
+        model_uuid = unicode(model_uuid) if model_uuid else None
+        return super(APIInfo, cls).__new__(
+            cls, endpoints, user, password, model_uuid)
+
+    def __init__(self, *args, **kwargs):
+        if not self.endpoints:
+            raise ValueError("missing endpoints")
+        if not self.user:
+            raise ValueError("missing user")
+        if not self.password:
+            raise ValueError("missing password")
+
+    @property
+    def address(self):
+        """The primary API endpoint address to use."""
+        return self.endpoints[0]
 
 
 class Juju1CLI(object):
