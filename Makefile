@@ -17,4 +17,4 @@ lint:
 
 .PHONY: install-dev
 install-dev:
-	ln -s $(shell pwd)/txjuju /usr/local/lib/python2.7/dist-packages/txjuju
+	ln -snv $(shell pwd)/txjuju /usr/local/lib/python2.7/dist-packages/txjuju
