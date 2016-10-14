@@ -3,6 +3,8 @@
 import subprocess
 from collections import namedtuple
 
+import yaml
+
 
 class Executable(namedtuple("Executable", "filename envvars")):
     """A single executable."""
@@ -51,3 +53,9 @@ class Executable(namedtuple("Executable", "filename envvars")):
         """
         args = self.resolve_args(*args)
         return subprocess.check_output(args, env=self.envvars, **kwargs)
+
+
+class UnicodeYamlLoader(yaml.Loader):
+    """yaml loader class returning unicode objects instead of python str."""
+UnicodeYamlLoader.add_constructor(
+    u'tag:yaml.org,2002:str', UnicodeYamlLoader.construct_scalar)

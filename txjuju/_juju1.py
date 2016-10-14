@@ -1,5 +1,6 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
+import json
 import os.path
 
 import yaml
@@ -48,3 +49,51 @@ class ConfigWriter(object):
         if env.bootstrap.admin_secret:
             config["admin-secret"] = env.bootstrap.admin_secret
         return config
+
+
+class CLIHooks(object):
+
+    CFGDIR_ENVVAR = "JUJU_HOME"
+
+    def get_bootstrap_args(self, spec, to=None, cfgfile=None,
+                           verbose=False, gui=False, autoupgrade=False):
+        # Note that for Juju 1.x we ignore gui.
+        if cfgfile is not None:
+            raise ValueError("cfgfile not supported for Juju 1.x bootstrap")
+        args = ["bootstrap"]
+        if verbose:
+            args += ["-v"]
+        if to:
+            args += ["--to", to]
+        if not autoupgrade:
+            args += ["--no-auto-upgrade"]
+        args += ["-e", spec.name]
+        return args
+
+    def get_api_info_args(self, controller_name=None):
+        args = ["api-info", "--password", "--refresh", "--format=json"]
+        if controller_name is not None:
+            args += ["-e", controller_name]
+        return args
+
+    def parse_api_info(self, output, controller_name=None):
+        # Note that for Juju 1.x we ignore controller_name.
+        data = json.loads(output)
+        info = {
+            "endpoints": data["state-servers"],
+            "user": data["user"],
+            "password": data["password"],
+            "model_uuid": None,
+            }
+        return {
+            None: info,
+            "controller": dict(info, model_uuid=data["environ-uuid"]),
+            }
+
+    def get_destroy_controller_args(self, name=None, force=False):
+        args = ["destroy-environment", "--yes"]
+        if force:
+            args += ["--force"]
+        if name is not None:
+            args += [name]
+        return args

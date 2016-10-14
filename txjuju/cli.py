@@ -7,14 +7,12 @@ from collections import namedtuple
 from cStringIO import StringIO
 
 import yaml
-from yaml import Loader
-
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 from twisted.internet.protocol import ProcessProtocol
 from twisted.python import log
 
-from . import config, _utils
+from . import config, _utils, _juju1, _juju2
 from .errors import CLIError
 
 
@@ -131,6 +129,79 @@ class APIInfo(namedtuple("APIInfo", "endpoints user password model_uuid")):
         """The primary API endpoint address to use."""
         return self.endpoints[0]
 
+
+class CLI(object):
+    """The client CLI for some Juju version."""
+
+    @classmethod
+    def from_version(cls, filename, version, cfgdir, envvars=None):
+        """Return a new CLI for the given binary and version.
+
+        @param filename: The path to the juju binary.
+        @param version: The Juju version to use.
+        @param cfgdir: The path to the "juju home" directory.
+        @param envvars: The extra environment variables to use when
+            running the juju command.  If not set then os.environs
+            is used.
+        """
+        if not version:
+            raise ValueError("missing version")
+        elif version.startswith("1."):
+            juju = _juju1.CLIHooks()
+        elif version.startswith("2."):
+            juju = _juju2.CLIHooks()
+        else:
+            raise ValueError("unsupported Juju version {!r}".format(version))
+
+        executable = get_executable(filename, juju, cfgdir, envvars)
+        return cls(executable, juju)
+
+    def __init__(self, executable, version_cli):
+        """
+        @param executable: The Executable to use.
+        @param version_cli: The version-specific subcommand handler.
+        """
+        if not executable:
+            raise ValueError("missing executable")
+        if version_cli is None:
+            raise ValueError("missing version_cli")
+        self._exe = executable
+        self._juju = version_cli
+
+    def bootstrap(self, spec, to=None, cfgfile=None,
+                  verbose=False, gui=False, autoupgrade=False):
+        """Bootstrap a new Juju controller.
+
+        @param spec: The BootstrapSpec to use.
+        @param to: The machine ID to which to deploy the API server.
+        @param cfgfile: The bootstrap config file to use.
+        @param verbose: Produce more verbose output.
+        @param gui: Install and start the JUJU GUI for the controller.
+        @param autoupgrade: Perform automatic upgrades of Ubuntu.
+        """
+        args = self._juju.get_bootstrap_args(
+            spec, to, cfgfile, verbose, gui, autoupgrade)
+        self._exe.run(*args)
+
+    def api_info(self, controller_name=None):
+        """Return {<model name>: APIInfo} for each of the controller's models.
+
+        One entry is included for the controller-level API facades.  The
+        key for that entry is None.
+        """
+        args = self._juju.get_api_info_args(controller_name)
+        out = self._exe.run_out(*args)
+        infos = self._juju.parse_api_info(out, controller_name)
+        return {modelname: APIInfo(**info)
+                for modelname, info in infos.items()}
+
+    def destroy_controller(self, name=None, force=False):
+        """Destroy the controller."""
+        args = self._juju.get_destroy_controller_args(name, force)
+        self._exe.run(*args)
+
+
+# TODO Use _juju1,CLIHooks in the twisted code here.
 
 class Juju1CLI(object):
 
@@ -249,6 +320,8 @@ class Juju1CLI(object):
         raise error
 
 
+# TODO Use _juju2,CLIHooks in the twisted code here.
+
 class Juju2CLI(object):
 
     # Allow override for testing purposes, normal use should not need
@@ -357,7 +430,7 @@ class Juju2CLI(object):
 
     def _parse_yaml_output(self, (stdout, stderr)):
         """Parse YAML output from the juju process."""
-        return yaml.load(stdout, UnicodeYamlLoader)
+        return yaml.load(stdout, _utils.UnicodeYamlLoader)
 
     def _run(self, args=(), outfile=None):
         env = os.environ.copy()
@@ -386,12 +459,6 @@ class Juju2CLI(object):
         error = CLIError(out, err, signal=signal)
         log.err(error)
         raise error
-
-
-class UnicodeYamlLoader(Loader):
-    """yaml loader class returning unicode objects instead of python str."""
-UnicodeYamlLoader.add_constructor(
-    u'tag:yaml.org,2002:str', UnicodeYamlLoader.construct_scalar)
 
 
 def spawn_process(executable, args, env, outfile=None):
