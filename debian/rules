@@ -1,5 +1,6 @@
 #!/usr/bin/make -f
 
 export PYBUILD_NAME=txjuju
+export PYBUILD_DISABLE_python3=test
 %:
 	dh $@ --with python2 --buildsystem=pybuild
