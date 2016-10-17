@@ -141,7 +141,7 @@ class FakeAPIBackend(object):
             "Annotations": info.pairs,
             "Tag": info.name}]
 
-    def _formatJujuApplicationInfo(self, info, verb):
+    def _formatApplicationInfo(self, info, verb):
         if self.version == 1:
             entityName = "service"
         else:
