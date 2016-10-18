@@ -168,6 +168,11 @@ class CLI(object):
         self._exe = executable
         self._juju = version_cli
 
+    @property
+    def executable(self):
+        """The Executable used by this CLI."""
+        return self._exe
+
     def bootstrap(self, spec, to=None, cfgfile=None,
                   verbose=False, gui=False, autoupgrade=False):
         """Bootstrap a new Juju controller.
