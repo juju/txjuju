@@ -138,9 +138,9 @@ class Juju1APIClientTest(TestCase):
         self.assertEqual("precise", modelInfo.defaultSeries)
         self.assertEqual(uuid, modelInfo.uuid)
         self.assertIsNone(modelInfo.controllerUUID)
-        self.assertEqual("amazon", modelInfo.cloud)
+        self.assertIsNone(modelInfo.cloudTag)
         self.assertIsNone(modelInfo.cloudRegion)
-        self.assertIsNone(modelInfo.cloudCredential)
+        self.assertIsNone(modelInfo.cloudCredentialTag)
 
     def test_modelInfo_bad_result(self):
         """
@@ -843,9 +843,9 @@ class Juju2APIClientTest(TestCase):
                 u"default-series": u"precise",
                 u"uuid": uuid,
                 u"controller-uuid": u"a0c03f34-ea02-11e2-8e96-875122dd4b53",
-                u"cloud": "maas1",
+                u"cloud-tag": "cloud-maas1",
                 u"cloud-region": "1",
-                u"cloud-credential": "abc123...",
+                u"cloud-credential-tag": "credential-abc123...",
                 }}],
              })
 
@@ -856,9 +856,9 @@ class Juju2APIClientTest(TestCase):
         self.assertEqual(uuid, modelInfo.uuid)
         self.assertEqual(
             "a0c03f34-ea02-11e2-8e96-875122dd4b53", modelInfo.controllerUUID)
-        self.assertEqual("maas1", modelInfo.cloud)
+        self.assertEqual("cloud-maas1", modelInfo.cloudTag)
         self.assertEqual("1", modelInfo.cloudRegion)
-        self.assertEqual("abc123...", modelInfo.cloudCredential)
+        self.assertEqual("credential-abc123...", modelInfo.cloudCredentialTag)
 
     def test_modelInfo_bad_response(self):
         """
@@ -938,7 +938,7 @@ class Juju2APIClientTest(TestCase):
         The cloud method sends a 'Cloud' request and
         returns a deferred that will callback with a CloudInfo instance.
         """
-        deferred = self.client.cloud("maas")
+        deferred = self.client.cloud("cloud-maas")
         self.assertEqual("Cloud", self.backend.lastType)
         self.assertEqual("Cloud", self.backend.lastRequest)
         self.assertEqual(1, self.backend.lastVersion)
@@ -972,7 +972,7 @@ class Juju2APIClientTest(TestCase):
 
         Juju's API may omit all the response values (except "type").
         """
-        deferred = self.client.cloud("maas")
+        deferred = self.client.cloud("cloud-maas")
         self.assertEqual("Cloud", self.backend.lastType)
         self.assertEqual("Cloud", self.backend.lastRequest)
         self.assertEqual(1, self.backend.lastVersion)

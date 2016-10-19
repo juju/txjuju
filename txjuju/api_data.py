@@ -18,11 +18,8 @@ class ModelInfo(object):
     """
 
     def __init__(self, name, providerType, defaultSeries, uuid,
-                 controllerUUID=None, cloud=None, cloudRegion=None,
-                 cloudCredential=None):
-        if cloud is None:
-            cloud = name
-
+                 controllerUUID=None, cloudTag=None, cloudRegion=None,
+                 cloudCredentialTag=None):
         self.name = name
         self.providerType = providerType
         self.defaultSeries = defaultSeries
@@ -30,9 +27,9 @@ class ModelInfo(object):
 
         # Juju 2.x-only:
         self.controllerUUID = controllerUUID
-        self.cloud = cloud
+        self.cloudTag = cloudTag
         self.cloudRegion = cloudRegion
-        self.cloudCredential = cloudCredential
+        self.cloudCredentialTag = cloudCredentialTag
 
 
 class CloudInfo(object):
