@@ -189,12 +189,12 @@ class Juju2APIClient(object):
                                      params=params)
         return deferred.addCallback(self._parseModelInfo)
 
-    def cloud(self, cloudname):
+    def cloud(self, cloudtag):
         """Return information about the model's cloud.
 
         @return: A deferred which will callback with a CloudInfo.
         """
-        params = {"entities": [{"tag": "cloud-" + cloudname}]}
+        params = {"entities": [{"tag": cloudtag}]}
         deferred = self._sendRequest("Cloud", "Cloud", params=params)
         return deferred.addCallback(self._parseCloudResponse)
 
@@ -568,9 +568,9 @@ class Juju2APIClient(object):
                 result[self._getParam("default-series")],
                 result[self._getParam("uuid")],
                 result.get(self._getParam("controller-uuid")),
-                result.get(self._getParam("cloud")),
+                result.get(self._getParam("cloud-tag")),
                 result.get(self._getParam("cloud-region")),
-                result.get(self._getParam("cloud-credential")),
+                result.get(self._getParam("cloud-credential-tag")),
                 )
         except KeyError:
             raise APIRequestError("malformed result {}".format(result), "")
