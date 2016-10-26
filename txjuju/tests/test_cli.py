@@ -590,13 +590,13 @@ spam:
         self.cli.bootstrap(spec, "0", "bootstrap.yaml", True, True, True)
 
         self.assert_called(
-            "bootstrap -v --to 0 --config bootstrap.yaml lxd spam")
+            "bootstrap -v --to 0 --auto-upgrade --config bootstrap.yaml lxd spam")
 
     def test_bootstrap_minimal(self):
         spec = BootstrapSpec("spam", "lxd")
         self.cli.bootstrap(spec)
 
-        self.assert_called("bootstrap --no-auto-upgrade --no-gui lxd spam")
+        self.assert_called("bootstrap --no-gui lxd spam")
 
     def test_api_info_full(self):
         filename, callfile = write_script(
