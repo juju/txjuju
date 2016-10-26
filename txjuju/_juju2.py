@@ -122,8 +122,8 @@ class CLIHooks(object):
             args += ["-v"]
         if to:
             args += ["--to", to]
-        if not autoupgrade:
-            args += ["--no-auto-upgrade"]
+        if autoupgrade:
+            args += ["--auto-upgrade"]
         if not gui:
             args += ["--no-gui"]
         if cfgfile:
