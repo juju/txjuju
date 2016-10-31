@@ -15,7 +15,7 @@ class FakeAPIBackend(object):
     @ivar requests: Map request IDs to their payload.
     """
 
-    def __init__(self, version=1):
+    def __init__(self, version="2.0.0"):
         self.requests = {}
         self.pending = []
         self.protocol = APIClientProtocol()
@@ -75,19 +75,56 @@ class FakeAPIBackend(object):
         self._fire(payload, requestId)
 
     def responseLogin(self, endpoints=[u"host"]):
-        api_servers = [
-            [{"NetworkName": "net-%d" % index,
-              "Port": 17070,
-              "Scope": "local-cloud",
-              "Type": "ipv4",
-              "Value": endpoint}]
-            for index, endpoint in enumerate(endpoints)]
-        return self.response(
-            {"EnvironTag": "environment-uuid-123",
-             "Servers": api_servers})
+        if self.version.startswith("2."):
+            api_servers = [
+                [{"space-name": "net-%d" % index,
+                  "port": 17070,
+                  "scope": "local-cloud",
+                  "type": "ipv4",
+                  "value": endpoint}]
+                for index, endpoint in enumerate(endpoints)]
+            return self.response(
+                {"model-tag": "model-uuid-xyz",
+                 "servers": api_servers})
+        else:
+            api_servers = [
+                [{"NetworkName": "net-%d" % index,
+                  "Port": 17070,
+                  "Scope": "local-cloud",
+                  "Type": "ipv4",
+                  "Value": endpoint}]
+                for index, endpoint in enumerate(endpoints)]
+            return self.response(
+                {"EnvironTag": "environment-uuid-123",
+                 "Servers": api_servers})
+
+    def responseModelInfo(self, name, providertype):
+        assert not self.version.startswith("1.")
+
+        info = {"name": name,
+                "provider-type": providertype,
+                "default-series": "trusty",
+                "uuid": "model-uuid-xyz",
+                "controller-uuid": "controller-uuid-abc",
+                }
+        return self.response({"results": [{"result": info}]})
+
+    def responseCloud(self, cloudtype):
+        assert not self.version.startswith("1.")
+
+        cloud = {"type": cloudtype,
+                 "auth-types": [],
+                 "endpoint": "",
+                 "storage-endpoint": "",
+                 "regions": [],
+                 }
+        return self.response({"results": [{"cloud": cloud}]})
 
     def responseWatchAll(self):
-        self.response({u"AllWatcherId": "1"})
+        if self.version.startswith("2."):
+            self.response({"watcher-id": "1"})
+        else:
+            self.response({u"AllWatcherId": "1"})
 
     def responseLoginAndWatchAll(self):
         self.responseLogin()
@@ -108,17 +145,27 @@ class FakeAPIBackend(object):
             formatter = getattr(self, "_format" + delta[0].__class__.__name__)
             responses.append(formatter(*delta))
 
-        self.response({u"Deltas": responses})
+        if self.version.startswith("2."):
+            self.response({"deltas": responses})
+        else:
+            self.response({u"Deltas": responses})
 
     def responseSetAnnotations(self, requestId=None):
         self.response({})
 
     def responseServiceGet(self, name, config={}):
-        self.response(
-            {"Service": name,
-             "Charm": name,
-             "Constraints": {},
-             "Config": config})
+        if self.version.startswith("2."):
+            self.response(
+                {"application": name,
+                 "charm": name,
+                 "constraints": {},
+                 "config": config})
+        else:
+            self.response(
+                {"Service": name,
+                 "Charm": name,
+                 "Constraints": {},
+                 "Config": config})
 
     def error(self, exception, requestId=None):
         """Fire an error for the request with the given ID.
@@ -137,30 +184,48 @@ class FakeAPIBackend(object):
         self.protocol.dataReceived(json.dumps(payload))
 
     def _formatAnnotationInfo(self, info, verb):
-        return ["annotation", verb, {
-            "Annotations": info.pairs,
-            "Tag": info.name}]
+        if self.version.startswith("2."):
+            return ["annotation", verb, {
+                "annotations": info.pairs,
+                "tag": info.name}]
+        else:
+            return ["annotation", verb, {
+                "Annotations": info.pairs,
+                "Tag": info.name}]
 
     def _formatApplicationInfo(self, info, verb):
-        if self.version == 1:
-            entityName = "service"
+        if self.version.startswith("2."):
+            return ["application", verb, {
+                "name": info.name,
+                "charm-url": info.charmURL}]
         else:
-            entityName = "application"
-        return [entityName, verb, {
-            "Name": info.name,
-            "CharmURL": info.charmURL}]
+            return ["service", verb, {
+                "Name": info.name,
+                "CharmURL": info.charmURL}]
 
     def _formatUnitInfo(self, info, verb):
-        return ["unit", verb, {
-            "Name": info.name,
-            "Service": info.applicationName,
-            "CharmURL": info.charmURL}]
+        if self.version.startswith("2."):
+            return ["unit", verb, {
+                "name": info.name,
+                "application": info.applicationName,
+                "charm-url": info.charmURL}]
+        else:
+            return ["unit", verb, {
+                "Name": info.name,
+                "Service": info.applicationName,
+                "CharmURL": info.charmURL}]
 
     def _formatMachineInfo(self, info, verb):
-        return ["machine", verb, {
-            "Id": info.id,
-            "InstanceId": info.instanceId,
-            "Status": info.status}]
+        if self.version.startswith("2."):
+            return ["machine", verb, {
+                "id": info.id,
+                "instance-id": info.instanceId,
+                "agent-status": info.status}]
+        else:
+            return ["machine", verb, {
+                "Id": info.id,
+                "InstanceId": info.instanceId,
+                "Status": info.status}]
 
 
 class FakeAPIClientProtocol(object):
