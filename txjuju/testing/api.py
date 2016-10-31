@@ -154,11 +154,18 @@ class FakeAPIBackend(object):
         self.response({})
 
     def responseServiceGet(self, name, config={}):
-        self.response(
-            {"Service": name,
-             "Charm": name,
-             "Constraints": {},
-             "Config": config})
+        if self.version.startswith("2."):
+            self.response(
+                {"application": name,
+                 "charm": name,
+                 "constraints": {},
+                 "config": config})
+        else:
+            self.response(
+                {"Service": name,
+                 "Charm": name,
+                 "Constraints": {},
+                 "Config": config})
 
     def error(self, exception, requestId=None):
         """Fire an error for the request with the given ID.
