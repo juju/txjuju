@@ -15,7 +15,7 @@ class FakeAPIBackend(object):
     @ivar requests: Map request IDs to their payload.
     """
 
-    def __init__(self, version=1):
+    def __init__(self, version="2.0.0"):
         self.requests = {}
         self.pending = []
         self.protocol = APIClientProtocol()
@@ -75,7 +75,7 @@ class FakeAPIBackend(object):
         self._fire(payload, requestId)
 
     def responseLogin(self, endpoints=[u"host"]):
-        if self.version == 2:
+        if self.version.startswith("2."):
             api_servers = [
                 [{"space-name": "net-%d" % index,
                   "port": 17070,
@@ -99,7 +99,7 @@ class FakeAPIBackend(object):
                  "Servers": api_servers})
 
     def responseModelInfo(self, name, providertype):
-        assert self.version != 1
+        assert not self.version.startswith("1.")
 
         info = {"name": name,
                 "provider-type": providertype,
@@ -110,7 +110,7 @@ class FakeAPIBackend(object):
         return self.response({"results": [{"result": info}]})
 
     def responseCloud(self, cloudtype):
-        assert self.version != 1
+        assert not self.version.startswith("1.")
 
         cloud = {"type": cloudtype,
                  "auth-types": [],
@@ -121,7 +121,7 @@ class FakeAPIBackend(object):
         return self.response({"results": [{"cloud": cloud}]})
 
     def responseWatchAll(self):
-        if self.version == 2:
+        if self.version.startswith("2."):
             self.response({"watcher-id": "1"})
         else:
             self.response({u"AllWatcherId": "1"})
@@ -145,7 +145,7 @@ class FakeAPIBackend(object):
             formatter = getattr(self, "_format" + delta[0].__class__.__name__)
             responses.append(formatter(*delta))
 
-        if self.version == 2:
+        if self.version.startswith("2."):
             self.response({"deltas": responses})
         else:
             self.response({u"Deltas": responses})
@@ -177,7 +177,7 @@ class FakeAPIBackend(object):
         self.protocol.dataReceived(json.dumps(payload))
 
     def _formatAnnotationInfo(self, info, verb):
-        if self.version == 2:
+        if self.version.startswith("2."):
             return ["annotation", verb, {
                 "annotations": info.pairs,
                 "tag": info.name}]
@@ -187,7 +187,7 @@ class FakeAPIBackend(object):
                 "Tag": info.name}]
 
     def _formatApplicationInfo(self, info, verb):
-        if self.version == 2:
+        if self.version.startswith("2."):
             return ["application", verb, {
                 "name": info.name,
                 "charm-url": info.charmURL}]
@@ -197,7 +197,7 @@ class FakeAPIBackend(object):
                 "CharmURL": info.charmURL}]
 
     def _formatUnitInfo(self, info, verb):
-        if self.version == 2:
+        if self.version.startswith("2."):
             return ["unit", verb, {
                 "name": info.name,
                 "application": info.applicationName,
@@ -209,7 +209,7 @@ class FakeAPIBackend(object):
                 "CharmURL": info.charmURL}]
 
     def _formatMachineInfo(self, info, verb):
-        if self.version == 2:
+        if self.version.startswith("2."):
             return ["machine", verb, {
                 "id": info.id,
                 "instance-id": info.instanceId,
