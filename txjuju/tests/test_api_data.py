@@ -3,10 +3,143 @@
 from unittest import TestCase
 
 from txjuju.api_data import (
-    ApplicationConfig, MachineInfo, AnnotationInfo, ActionInfo)
+    APIInfo, ModelInfo, CloudInfo, WatcherDelta,
+    MachineInfo, ApplicationInfo, UnitInfo, ActionInfo, AnnotationInfo,
+    ApplicationConfig, RunResult)
+
+
+class APIInfoTest(TestCase):
+
+    def test___repr__(self):
+        """APIInfo has a useful repr."""
+        info = APIInfo(["localhost:12345"], "some-uuid")
+        result = repr(info)
+
+        self.assertEqual(
+            result,
+            "APIInfo(endpoints=['localhost:12345'], uuid='some-uuid')")
+
+
+class ModelInfoTest(TestCase):
+
+    def test___repr___full(self):
+        """ModelInfo has a useful repr when initialized with all args."""
+        info = ModelInfo(
+            "my-model", "dummy", "trusty", "some-uuid", "other-uuid",
+            "cloud-my-cloud", "some-region", "credential-my-auth")
+        result = repr(info)
+
+        self.assertEqual(
+            result,
+            ("ModelInfo(name='my-model', providerType='dummy',"
+             " defaultSeries='trusty', uuid='some-uuid',"
+             " controllerUUID='other-uuid', cloudTag='cloud-my-cloud',"
+             " cloudRegion='some-region',"
+             " cloudCredentialTag='credential-my-auth')"))
+
+    def test___repr___minimal(self):
+        """ModelInfo has a useful repr when initialized with minimal args."""
+        info = ModelInfo("my-model", "dummy", "trusty", "some-uuid")
+        result = repr(info)
+
+        self.assertEqual(
+            result,
+            ("ModelInfo(name='my-model', providerType='dummy',"
+             " defaultSeries='trusty', uuid='some-uuid', controllerUUID=None,"
+             " cloudTag=None, cloudRegion=None, cloudCredentialTag=None)"))
+
+
+class CloudInfoTest(TestCase):
+
+    def test___repr__(self):
+        """CloudInfo has a useful repr."""
+        info = CloudInfo("dummy", ["x"], "localhost", "localhost", ["y"])
+        result = repr(info)
+
+        self.assertEqual(
+            result,
+            ("CloudInfo(cloudtype='dummy', authTypes=['x'],"
+             " endpoint='localhost', storageEndpoint='localhost',"
+             " regions=['y'])"))
+
+
+class ApplicationInfoTest(TestCase):
+
+    def test___repr___full(self):
+        """ApplicationInfo has a useful repr when initialized with all args."""
+        info = ApplicationInfo(
+            "spam", True, "some-url", "dying", "eggs=yes", {"x": "y"})
+        result = repr(info)
+
+        self.assertEqual(
+            result,
+            ("ApplicationInfo(name='spam', exposed=True, charmURL='some-url',"
+             " life='dying', constraints='eggs=yes', config={'x': 'y'})"))
+
+    def test___repr___minimal(self):
+        """ApplicationInfo has a useful repr when initialized
+        with minimal args."""
+        info = ApplicationInfo("spam")
+        result = repr(info)
+
+        self.assertEqual(
+            result,
+            ("ApplicationInfo(name='spam', exposed=False, charmURL=None,"
+             " life=None, constraints=None, config=None)"))
+
+
+class UnitInfoTest(TestCase):
+
+    def test___repr___full(self):
+        """UnitInfo has a useful repr when initialized with all args."""
+        info = UnitInfo(
+            "spam/1", "spam", "trusty", "some-url", "localhost", "localhost",
+            "1", ["80"], "alive", "some info")
+        result = repr(info)
+
+        self.assertEqual(
+            result,
+            ("UnitInfo(name='spam/1', applicationName='spam',"
+             " series='trusty', charmURL='some-url',"
+             " publicAddress='localhost', privateAddress='localhost',"
+             " machineId='1', ports=['80'], status='alive',"
+             " statusInfo='some info')"))
+
+    def test___repr___minimal(self):
+        """UnitInfo has a useful repr when initialized with minimal args."""
+        info = UnitInfo("spam/1", "spam")
+        result = repr(info)
+
+        self.assertEqual(
+            result,
+            ("UnitInfo(name='spam/1', applicationName='spam', series=None,"
+             " charmURL=None, publicAddress=None, privateAddress=None,"
+             " machineId=u'', ports=(), status=None, statusInfo=u'')"))
 
 
 class ApplicationConfigTest(TestCase):
+
+    def test___repr___full(self):
+        """ApplicationConfig has a useful repr when initialized
+        with all args."""
+        cfg = ApplicationConfig("nfs", "nfs", "spam=yes", {"eggs": 42})
+        result = repr(cfg)
+
+        self.assertEqual(
+            result,
+            ("ApplicationConfig(application='nfs', charm='nfs',"
+             " constraints='spam=yes', config={'eggs': 42})"))
+
+    def test___repr___minimal(self):
+        """ApplicationConfig has a useful repr when initialized
+        with minimal args."""
+        cfg = ApplicationConfig("nfs", "nfs")
+        result = repr(cfg)
+
+        self.assertEqual(
+            result,
+            ("ApplicationConfig(application='nfs', charm='nfs',"
+             " constraints=None, config={})"))
 
     def test_has_options(self):
         """
@@ -35,6 +168,15 @@ class ApplicationConfigTest(TestCase):
 
 class AnnotationInfoTest(TestCase):
 
+    def test___repr__(self):
+        """APIInfo has a useful repr."""
+        info = AnnotationInfo("machine-0", {"x": "y"})
+        result = repr(info)
+
+        self.assertEqual(
+            result,
+            "AnnotationInfo(tag='machine-0', pairs={'x': 'y'})")
+
     def test_constructor(self):
         """
         The L{AnnotationInfo} constructor parses the given tag identifier,
@@ -55,6 +197,30 @@ class AnnotationInfoTest(TestCase):
 
 
 class MachineInfoTest(TestCase):
+
+    def test___repr___full(self):
+        """MachineInfo has a useful repr when initialized with all args."""
+        info = MachineInfo(
+            "1", "inst1", "alive", "some info", ["JobHostUnits"],
+            "localhost", False, True)
+        result = repr(info)
+
+        self.assertEqual(
+            result,
+            ("MachineInfo(id='1', instanceId='inst1', status='alive',"
+             " statusInfo='some info', jobs=['JobHostUnits'],"
+             " address='localhost', hasVote=False, wantsVote=True)"))
+
+    def test___repr___minimal(self):
+        """MachineInfo has a useful repr when initialized with minimal args."""
+        info = MachineInfo("1")
+        result = repr(info)
+
+        self.assertEqual(
+            result,
+            ("MachineInfo(id='1', instanceId=u'', status=u'pending',"
+             " statusInfo=u'', jobs=[], address=None,"
+             " hasVote=None, wantsVote=None)"))
 
     def test_defaults(self):
         """A MachineInfo can be created with default values."""
@@ -114,7 +280,29 @@ class MachineInfoTest(TestCase):
         self.assertTrue(info.wantsVote)
 
 
-class AcitonInfoTest(TestCase):
+class ActionInfoTest(TestCase):
+
+    def test___repr___full(self):
+        """ActionInfo has a useful repr when initialized with all args."""
+        info = ActionInfo(
+            "some-id", "an-action", "my-svc/3", "pending", "some msg",
+            {"x": "y"})
+        result = repr(info)
+
+        self.assertEqual(
+            result,
+            ("ActionInfo(id='some-id', name='an-action', receiver='my-svc/3',"
+             " status='pending', message='some msg', results={'x': 'y'})"))
+
+    def test___repr___minimal(self):
+        """ActionInfo has a useful repr when initialized with minimal args."""
+        info = ActionInfo("some-id", "an-action", "my-svc/3", "pending")
+        result = repr(info)
+
+        self.assertEqual(
+            result,
+            ("ActionInfo(id='some-id', name='an-action', receiver='my-svc/3',"
+             " status='pending', message='', results={})"))
 
     def test_defaults(self):
         """An ActionInfo can be created with default values."""
@@ -138,3 +326,30 @@ class AcitonInfoTest(TestCase):
             "1-2-3", "an-action", "service/3", "pending",
             results={"foo": "bar"})
         self.assertEqual({"foo": "bar"}, info.results)
+
+
+class WatcherDeltaTest(TestCase):
+
+    def test___repr__(self):
+        """WatcherDelta has a useful repr."""
+        delta = WatcherDelta("machine", "change", MachineInfo("1"))
+        result = repr(delta)
+
+        self.assertEqual(
+            result,
+            ("WatcherDelta(kind='machine', verb='change',"
+             " info=MachineInfo(id='1', instanceId=u'', status=u'pending',"
+             " statusInfo=u'', jobs=[], address=None, hasVote=None,"
+             " wantsVote=None))"))
+
+
+class RunResultTest(TestCase):
+
+    def test___repr__(self):
+        """RunResult has a useful repr."""
+        runresult = RunResult("xxx", "yyy", 1, "an error")
+        result = repr(runresult)
+
+        self.assertEqual(
+            result,
+            "RunResult(stdout='xxx', stderr='yyy', code=1, error='an error')")
