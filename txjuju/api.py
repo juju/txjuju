@@ -398,7 +398,7 @@ class Juju2APIClient(object):
         deferred = self._sendRequest(
             self._api_application_facade, "Deploy",
             params={"applications": [application_params]})
-        return deferred.addCallback(lambda _: None)  # No data in the response
+        return deferred.addCallback(self._parseErrorResults)
 
     def addCharm(self, charmURL):
         """Add a charm to the juju model so that it may be deployed."""
@@ -760,6 +760,11 @@ class Juju2APIClient(object):
             action_tag = result["action"]["tag"]
             action_ids.append(action_tag.replace("action-", ""))
         return action_ids
+
+    def _parseErrorResults(self, response):
+        """Raise an exception if the response has any errors in it."""
+        for result in response["results"]:
+            _handle_api_error(result)
 
 
 class Juju1APIClient(Juju2APIClient):

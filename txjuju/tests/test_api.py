@@ -1130,7 +1130,7 @@ class Juju2APIClientTest(TestCase):
         self.assertEqual("Application", self.backend.lastType)
         self.assertEqual("Deploy", self.backend.lastRequest)
         self.assertEqual(params, self.backend.lastParams)
-        self.backend.response({})
+        self.backend.response({"results": [{}]})
         self.assertIsNone(self.successResultOf(deferred))
 
     def test_serviceDeploy_with_machine_spec(self):
@@ -1166,7 +1166,7 @@ class Juju2APIClientTest(TestCase):
                          "ephemeral-unmount": "/mnt"}})}]}
         self.assertEqual(params, self.backend.lastParams)
         self.assertEqual(1, self.backend.lastVersion)
-        self.backend.response({})
+        self.backend.response({"results": [{}]})
         self.assertIsNone(self.successResultOf(deferred))
 
     def test_serviceDeploy_with_machine_spec_new_lxc(self):
@@ -1204,8 +1204,51 @@ class Juju2APIClientTest(TestCase):
                          "ephemeral-unmount": "/mnt"}})}]}
         self.assertEqual(params, self.backend.lastParams)
         self.assertEqual(1, self.backend.lastVersion)
-        self.backend.response({})
+        self.backend.response({"results": [{}]})
         self.assertIsNone(self.successResultOf(deferred))
+
+    def test_serviceDeployFailure(self):
+        """
+        The serviceDeploy method sends a 'Deploy' request to the 'Application'
+        facade.  If the request fails on the server then an ErrorResults
+        response is sent and will result in an exception.
+        """
+        deferred = self.client.serviceDeploy(
+            serviceName="ceph", charmURL="cs:precise/ceph-18",
+            config={
+                "monitor-count": "3",
+                "fsid": "6547bd3e-1397-11e2-82e5-53567c8d32dc",
+                "monitor-secret": "AQCXrnZQwI7KGBAAiPofmKEXKxu5bUzoYLVkbQ==",
+                "osd-devices": "/dev/vdb",
+                "osd-reformat": "yes",
+                "ephemeral-unmount": "/mnt"})
+        params = {
+            "applications": [
+                {"application": "ceph",
+                 "charm-url": "cs:precise/ceph-18",
+                 "channel": "stable",
+                 "num-units": 0,
+                 "config-yaml": yaml.dump(
+                     {"ceph": {
+                         "monitor-count": "3",
+                         "fsid": "6547bd3e-1397-11e2-82e5-53567c8d32dc",
+                         "monitor-secret": (
+                             "AQCXrnZQwI7KGBAAiPofmKEXKxu5bUzoYLVkbQ=="),
+                         "osd-devices": "/dev/vdb",
+                         "osd-reformat": "yes",
+                         "ephemeral-unmount": "/mnt"}})}]
+        }
+        self.assertEqual("Application", self.backend.lastType)
+        self.assertEqual("Deploy", self.backend.lastRequest)
+        self.assertEqual(params, self.backend.lastParams)
+        self.backend.response({"results": [
+            {"error": {"message": "charm \"cs:precise/ceph-18\" not found",
+                       "code": "not found"}},
+            ]})
+        err = self.failureResultOf(deferred)
+        self.assertIsInstance(err.value, APIRequestError)
+        self.assertEqual("charm \"cs:precise/ceph-18\" not found", err.value.error)
+        self.assertEqual("not found", err.value.code)
 
     def test_addMachine(self):
         """
