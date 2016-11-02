@@ -90,7 +90,7 @@ class Juju1APIClientTest(TestCase):
 
     def setUp(self):
         super(Juju1APIClientTest, self).setUp()
-        self.backend = FakeAPIBackend()
+        self.backend = FakeAPIBackend(version="1.25.6")
         self.client = Juju1APIClient(self.backend.protocol)
 
     def test_login(self):
@@ -779,7 +779,7 @@ class Juju2APIClientTest(TestCase):
 
     def setUp(self):
         super(Juju2APIClientTest, self).setUp()
-        self.backend = FakeAPIBackend()
+        self.backend = FakeAPIBackend(version="2.0.0")
         self.client = Juju2APIClient(self.backend.protocol)
 
     def test_login(self):
