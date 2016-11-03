@@ -206,6 +206,7 @@ def connect(info, protocolfactory=None, get_client=None, **kwargs):
     get_client = get_client or info.get_client
     endpoint = info.get_endpoint(**kwargs)
     deferred = endpoint.connect(protocolfactory)
+
     deferred.addCallback(lambda protocol: get_client(protocol, info))
     return deferred
 
@@ -240,7 +241,6 @@ class Endpoint(object):
         self._reactor = reactor
         self.addr = addr
         self.uuid = uuid
-#        self._caCert = caCert
         self.clientClass = clientClass
 
         ConnInfo = Juju2ConnInfo
@@ -269,7 +269,100 @@ class Endpoint(object):
         return info.get_url()
 
 
-class Juju2APIClient(object):
+class APIClient(object):
+    """The common API client functionality and state."""
+
+    _API_FACADE_VERSIONS = {}
+    _LOOKUP_PARAMETERS = {}
+    _SKIP_CONVERSION = []
+
+    def __init__(self, protocol, info=None):
+        """
+        @param protocol: A connected JujuProtocol instance.
+        @type protocol: JujuProtocol
+        """
+        self._protocol = protocol
+        self._info = info
+
+    def close(self):
+        """Close the connection with the API server."""
+        self._protocol.transport.loseConnection()
+        return self._protocol.disconnected
+
+    def _sendRequest(self, entityType, request, entityId=None, params=None):
+        """Return a deferred sendRequest with the proper facade_version."""
+        converted_params = self._convertParamKeys(params)
+        facade_version = None
+        if entityType in self._API_FACADE_VERSIONS:
+            facade_version = (
+                self._API_FACADE_VERSIONS[entityType].get(request))
+        return self._protocol.sendRequest(
+            entityType, request, entityId=entityId, params=converted_params,
+            facade_version=facade_version)
+
+    def _getCamelCaseParam(self, param):
+        """Return the unaltered param value for juju-2.0.
+
+        Juju-2.0 uses almost exclusively lowercase, hyphenated parameters.
+        """
+        return param
+
+    def _getParam(self, param):
+        """Lookup the appropriate parameter to use in API calls."""
+        try:
+            return self._LOOKUP_PARAMETERS[param]
+        except KeyError:
+            return self._getCamelCaseParam(param)
+
+    def _convertParamKeys(self, params):
+        """Convert parameter keys for compatibility with the API version."""
+        if not params:
+            return {}
+        if isinstance(params, str) or isinstance(params, unicode):
+            return params
+        converted_params = {}
+        for key, value in params.items():
+            if isinstance(value, list):
+                value = [self._convertParamKeys(item) for item in value]
+            elif (isinstance(value, dict) and
+                  key not in self._SKIP_CONVERSION):
+                value = self._convertParamKeys(value)
+            converted_params[self._getParam(key)] = value
+        return converted_params
+
+    def _getPlacementParam(self, scope, directive):
+        """Return placement parameter for Juju 2.0."""
+        if not any([scope, directive]):
+            return {}
+        if scope is None:
+            scope = MACHINE_SCOPE
+        return {"placement": [{"scope": scope,
+                               "directive": directive}]}
+
+    def _isUsableEndpoint(self, endpoint):
+        """Whether the given address is a usable state server endpoint.
+
+        We require the address to be a non-local IPv4 address. Alternatively,
+        we consider the endpoint usable if it's a fake-juju one.
+        """
+        # XXX workaround until lp:1597372 gives us consistency in juju2beta10
+        scope = endpoint.get("Scope") or endpoint.get("scope")
+        type_ = endpoint.get("Type") or endpoint.get("type")
+
+        network = endpoint.get(self._getParam("space-name"))
+        if scope != "local-machine" and type_ == "ipv4":
+            return True
+        # This is not a non-local IPv4 address, let's check if it's a
+        # fake-juju one instead.
+        return network == "dummy-provider-network" and type_ == "hostname"
+
+    def _parseErrorResults(self, response):
+        """Raise an exception if the response has any errors in it."""
+        for result in response["results"]:
+            _handle_api_error(result)
+
+
+class Juju2APIClient(APIClient):
     """Client for the Juju 2.0 API.
 
     Each method of this class will perform the relevant Juju 2.0 API request
@@ -314,14 +407,6 @@ class Juju2APIClient(object):
     }
     # Skip parameter conversion for any values below these keys
     _SKIP_CONVERSION = ["Options", "Pairs", "parameters", "Config"]
-
-    def __init__(self, protocol, info=None):
-        """
-        @param protocol: A connected JujuProtocol instance.
-        @type protocol: JujuProtocol
-        """
-        self._protocol = protocol
-        self._info = info
 
     def login(self, username, password):
         """Authenticate using the given credentials.
@@ -446,56 +531,6 @@ class Juju2APIClient(object):
         deferred = self._sendRequest(
             self._api_application_facade, "AddRelation", params=params)
         return deferred.addCallback(lambda _: None)
-
-    def _sendRequest(self, entityType, request, entityId=None, params=None):
-        """Return a deferred sendRequest with the proper facade_version."""
-        converted_params = self._convertParamKeys(params)
-        facade_version = None
-        if entityType in self._API_FACADE_VERSIONS:
-            facade_version = (
-                self._API_FACADE_VERSIONS[entityType].get(request))
-        return self._protocol.sendRequest(
-            entityType, request, entityId=entityId, params=converted_params,
-            facade_version=facade_version)
-
-    def _getCamelCaseParam(self, param):
-        """Return the unaltered param value for juju-2.0.
-
-        Juju-2.0 uses almost exclusively lowercase, hyphenated parameters.
-        """
-        return param
-
-    def _getParam(self, param):
-        """Lookup the appropriate parameter to use in API calls."""
-        try:
-            return self._LOOKUP_PARAMETERS[param]
-        except KeyError:
-            return self._getCamelCaseParam(param)
-
-    def _convertParamKeys(self, params):
-        """Convert parameter keys for compatibility with the API version."""
-        if not params:
-            return {}
-        if isinstance(params, str) or isinstance(params, unicode):
-            return params
-        converted_params = {}
-        for key, value in params.items():
-            if isinstance(value, list):
-                value = [self._convertParamKeys(item) for item in value]
-            elif (isinstance(value, dict) and
-                  key not in self._SKIP_CONVERSION):
-                value = self._convertParamKeys(value)
-            converted_params[self._getParam(key)] = value
-        return converted_params
-
-    def _getPlacementParam(self, scope, directive):
-        """Return placement parameter for Juju 2.0."""
-        if not any([scope, directive]):
-            return {}
-        if scope is None:
-            scope = MACHINE_SCOPE
-        return {"placement": [{"scope": scope,
-                               "directive": directive}]}
 
     def _getServiceDeployParams(self, serviceName, charmURL, scope=None,
                                 directive=None, config=None):
@@ -671,11 +706,6 @@ class Juju2APIClient(object):
         deferred.addCallback(self._parseEnqueueActions)
         return deferred.addCallback(self._parseSingleAction)
 
-    def close(self):
-        """Close the connection with the API server."""
-        self._protocol.transport.loseConnection()
-        return self._protocol.disconnected
-
     def _parseAddCharm(self, response):
         """Parse the AddCharm API response for errors."""
         error = response.get("Error")  # XXX Watch for param renames
@@ -697,23 +727,6 @@ class Juju2APIClient(object):
                                     endpoint[self._getParam("port")]))
 
         return APIInfo(endpoints, uuid)
-
-    def _isUsableEndpoint(self, endpoint):
-        """Whether the given address is a usable state server endpoint.
-
-        We require the address to be a non-local IPv4 address. Alternatively,
-        we consider the endpoint usable if it's a fake-juju one.
-        """
-        # XXX workaround until lp:1597372 gives us consistency in juju2beta10
-        scope = endpoint.get("Scope") or endpoint.get("scope")
-        type_ = endpoint.get("Type") or endpoint.get("type")
-
-        network = endpoint.get(self._getParam("space-name"))
-        if scope != "local-machine" and type_ == "ipv4":
-            return True
-        # This is not a non-local IPv4 address, let's check if it's a
-        # fake-juju one instead.
-        return network == "dummy-provider-network" and type_ == "hostname"
 
     def _parseModelInfo(self, response):
         """Parse the response of a modelInfo request."""
@@ -927,11 +940,6 @@ class Juju2APIClient(object):
             action_tag = result["action"]["tag"]
             action_ids.append(action_tag.replace("action-", ""))
         return action_ids
-
-    def _parseErrorResults(self, response):
-        """Raise an exception if the response has any errors in it."""
-        for result in response["results"]:
-            _handle_api_error(result)
 
 
 class Juju1APIClient(Juju2APIClient):
