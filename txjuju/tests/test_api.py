@@ -1,17 +1,127 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
 from datetime import timedelta
+import unittest
 
 import yaml
+from twisted.internet.ssl import ClientContextFactory
 from twisted.trial.unittest import TestCase
 from twisted.test.proto_helpers import MemoryReactorClock
 
+from txjuju._twisted.websocketsclient import WebSocketsEndpoint
 from txjuju.api import (
+    Juju2ConnInfo, connect,
     Endpoint, Juju1APIClient, Juju2APIClient, MACHINE_SCOPE)
 from txjuju.errors import (
     APIRequestError, InvalidAPIEndpointAddress, AllWatcherStoppedError)
 from txjuju.protocol import APIClientFactory
 from txjuju.testing.api import FakeAPIBackend
+
+
+class Juju2ConnInfoTest(unittest.TestCase):
+
+    host = "x.y.z"
+    port = 80
+    address = "{}:{}".format(host, port)
+
+    def test_new_full(self):
+        """Juju2ConnInfo() works if provided all args."""
+        info = Juju2ConnInfo(
+            self.host, self.port, "/spam", "some-uuid", "some-cert", 100)
+
+        self.assertEqual(info.host, self.host)
+        self.assertEqual(info.port, self.port)
+        self.assertEqual(info.path, "/spam")
+        self.assertEqual(info.uuid, "some-uuid")
+        self.assertEqual(info.cacert, "some-cert")
+        self.assertEqual(info.timeout, 100)
+
+    def test_new_minimal(self):
+        """Juju2ConnInfo works with defaults if only given a hostname."""
+        info = Juju2ConnInfo(self.host)
+
+        self.assertEqual(info.host, self.host)
+        self.assertEqual(info.port, 17070)
+        self.assertEqual(info.path, "/api")
+        self.assertIsNone(info.uuid)
+        self.assertIsNone(info.cacert)
+        self.assertEqual(info.timeout, 20)
+
+    def test_new_with_address(self):
+        """host and port are set properly."""
+        info = Juju2ConnInfo(self.address)
+
+        self.assertEqual(info.host, self.host)
+        self.assertEqual(info.port, self.port)
+
+    def test_simple_properties(self):
+        """Juju2ConnInfo has various simple properties."""
+        info = Juju2ConnInfo(self.host, self.port, "/spam", "some-uuid")
+
+        self.assertEqual(info.address, self.address)
+        self.assertIs(info.get_ssl_context_factory, ClientContextFactory)
+
+    def test_properties_for_api_endpoint(self):
+        """Endpoint-dependent properties resolve correctly for API."""
+        info = Juju2ConnInfo(self.host, self.port, "/api", "some-uuid")
+
+        self.assertEqual(info.schema, "wss")
+        self.assertIs(info.get_protocol_factory, APIClientFactory)
+        self.assertIs(info.get_client, Juju2APIClient)
+        
+    def test_properties_for_other_endpoint(self):
+        """Endpoint-dependent properties resolve correctly for non-API."""
+        info = Juju2ConnInfo(self.host, self.port, "/spam", "some-uuid")
+
+        self.assertEqual(info.schema, "https")
+        with self.assertRaises(NotImplementedError):
+            info.get_protocol_factory
+        with self.assertRaises(NotImplementedError):
+            info.get_client
+
+    def test_get_url_minimal(self):
+        """get_url() works in its most basic form."""
+        info = Juju2ConnInfo(self.host, self.port, "/spam")
+        url = info.get_url()
+
+        self.assertEqual(url, "https://x.y.z:80/spam")
+
+    def test_get_url_api_endpoint(self):
+        """get_url() sets the correct schema for API endpoints."""
+        info = Juju2ConnInfo(self.host, self.port, "/api")
+        url = info.get_url()
+
+        self.assertEqual(url, "wss://x.y.z:80/api")
+
+    def test_get_url_with_uuid(self):
+        """get_url() produces a model-specific URL if a UUID is set."""
+        info = Juju2ConnInfo(self.host, self.port, "/spam", "some-uuid")
+        url = info.get_url()
+
+        self.assertEqual(url, "https://x.y.z:80/model/some-uuid/spam")
+
+    def test_get_url_with_args(self):
+        """get_url() turns args into a query."""
+        info = Juju2ConnInfo(self.host, self.port, "/spam")
+        url = info.get_url(eggs=1, ham=True)
+
+        self.assertEqual(url, "https://x.y.z:80/spam?eggs=1&ham=True")
+
+    def test_get_endpoint_api_endpoint(self):
+        """get_endpoint() works for API endpoints."""
+        reactor = MemoryReactorClock()
+        info = Juju2ConnInfo(self.host, self.port, "/api")
+        endpoint = info.get_endpoint(reactor)
+
+        self.assertIsInstance(endpoint, WebSocketsEndpoint)
+
+    def test_get_endpoint_other_endpoint(self):
+        """get_endpoint() works for non-API endpoints."""
+        reactor = MemoryReactorClock()
+        info = Juju2ConnInfo(self.host, self.port, "/spam")
+
+        with self.assertRaises(NotImplementedError):
+            info.get_endpoint(reactor)
 
 
 class EndpointTest(TestCase):
