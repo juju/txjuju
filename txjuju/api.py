@@ -206,7 +206,7 @@ def connect(info, protocolfactory=None, get_client=None, **kwargs):
     get_client = get_client or info.get_client
     endpoint = info.get_endpoint(**kwargs)
     deferred = endpoint.connect(protocolfactory)
-    deferred.addCallback(lambda protocol: get_client(protocol))
+    deferred.addCallback(lambda protocol: get_client(protocol, info))
     return deferred
 
 
@@ -315,12 +315,13 @@ class Juju2APIClient(object):
     # Skip parameter conversion for any values below these keys
     _SKIP_CONVERSION = ["Options", "Pairs", "parameters", "Config"]
 
-    def __init__(self, protocol):
+    def __init__(self, protocol, info=None):
         """
         @param protocol: A connected JujuProtocol instance.
         @type protocol: JujuProtocol
         """
         self._protocol = protocol
+        self._info = info
 
     def login(self, username, password):
         """Authenticate using the given credentials.
