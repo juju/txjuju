@@ -16,6 +16,7 @@ Example::
 
 """
 from datetime import timedelta
+import urlparse
 
 import yaml
 from twisted.internet.ssl import ClientContextFactory
@@ -32,11 +33,61 @@ from .errors import (
 
 MACHINE_SCOPE = "#"  # For directives targeting machine or container ids
 
+DEFAULT_PORT = 17070
+
+
+def get_url(addr, endpoint=None, uuid=None, defaultport=DEFAULT_PORT,
+            jujuversion=None):
+    """Return the API URL for the address and endpoint.
+
+    Raise an InvalidAPIEndpointAddress exception if the specified
+    address is not valid.
+    """
+    if endpoint is None:
+        endpoint = "/api"
+    elif not endpoint.startswith("/"):
+        endpoint = "/" + endpoint
+    if jujuversion is None:
+        jujuversion = "2.0.0"
+    schema = "wss" if endpoint == "/api" else "https"
+
+    url = _get_base_url(addr, schema, defaultport)
+    if jujuversion.startswith("1."):
+        return url
+
+    path = endpoint
+    if uuid is not None:
+        path = "/model/" + uuid + endpoint
+    url = url._replace(path=path)
+
+    return url
+
+
+def _get_base_url(addr, schema="https", defaultport=DEFAULT_PORT):
+    parts = addr.split(":")
+    host = parts[0]
+    if "/" in host:
+        raise InvalidAPIEndpointAddress(addr)
+
+    if len(parts) == 1:
+        port = defaultport
+    elif len(parts) == 2:
+        port = parts[1]
+    else:
+        raise InvalidAPIEndpointAddress(addr)
+    try:
+        port = int(port)
+    except ValueError:
+        raise InvalidAPIEndpointAddress(addr)
+
+    return urlparse.ParseResult(
+        schema, "{}:{}".format(host, port), "/", "", "", "")
+
 
 class Endpoint(object):
     """A Juju API endpoint."""
 
-    defaultPort = 17070
+    defaultPort = DEFAULT_PORT
     factoryClass = APIClientFactory  # For testing
 
     def __init__(self, reactor, addr, clientClass, caCert=None,
@@ -87,28 +138,9 @@ class Endpoint(object):
         Raise an InvalidAPIEndpointAddress exception if the specified
         address is not valid.
         """
-        parts = addr.split(":")
-        host = parts[0]
-        if "/" in host:
-            raise InvalidAPIEndpointAddress(addr)
-
-        if len(parts) == 1:
-            port = self.defaultPort
-        elif len(parts) == 2:
-            port = parts[1]
-        else:
-            raise InvalidAPIEndpointAddress(addr)
-
-        try:
-            port = int(port)
-        except ValueError:
-            raise InvalidAPIEndpointAddress(addr)
-        uri = "wss://%s:%d/" % (host, port)
-        if self.clientClass is Juju1APIClient:
-            return uri
-        if self.uuid:
-            uri += "model/" + self.uuid + "/api"
-        return uri
+        version = "1.x" if self.clientClass is Juju1APIClient else "2.x"
+        url = get_url(addr, "/api", self.uuid, self.defaultPort, version)
+        return url.geturl()
 
 
 class Juju2APIClient(object):
