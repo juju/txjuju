@@ -22,6 +22,8 @@ import urlparse
 
 import yaml
 from twisted.internet.ssl import ClientContextFactory
+from twisted.web.client import Agent, FileBodyProducer
+from twisted.web.http_headers import Headers
 
 from ._twisted.websocketsclient import WebSocketsEndpoint
 from .protocol import APIClientFactory
@@ -196,7 +198,8 @@ class Juju1ConnInfo(ConnInfo):
         return url.geturl()
 
 
-def connect(info, protocolfactory=None, get_client=None, **kwargs):
+def connect(info, protocolfactory=None, get_client=None, reactor=None,
+            **kwargs):
     """Connect to the Juju controller for API requests.
 
     @return: A deferred that will callback with a connected APIClient
@@ -204,10 +207,9 @@ def connect(info, protocolfactory=None, get_client=None, **kwargs):
     """
     protocolfactory = protocolfactory or info.get_protocol_factory()
     get_client = get_client or info.get_client
-    endpoint = info.get_endpoint(**kwargs)
+    endpoint = info.get_endpoint(reactor=reactor, **kwargs)
     deferred = endpoint.connect(protocolfactory)
-
-    deferred.addCallback(lambda protocol: get_client(protocol, info))
+    deferred.addCallback(lambda protocol: get_client(protocol, info, reactor))
     return deferred
 
 
@@ -276,18 +278,30 @@ class APIClient(object):
     _LOOKUP_PARAMETERS = {}
     _SKIP_CONVERSION = []
 
-    def __init__(self, protocol, info=None):
+    def __init__(self, protocol, info=None, reactor=None):
         """
         @param protocol: A connected JujuProtocol instance.
         @type protocol: JujuProtocol
         """
         self._protocol = protocol
         self._info = info
+        self._reactor = reactor
+        self._agent = Agent(reactor)
 
     def close(self):
         """Close the connection with the API server."""
         self._protocol.transport.loseConnection()
         return self._protocol.disconnected
+
+    def _send_http_request(self, method, path, content_type, body, args=None):
+        info = self._info._replace(path=path)
+        uri = info.get_url(**args or {})
+        headers = Headers({
+            'Content-Type': [content_type],
+            })
+        body = FileBodyProducer(body)
+        deferred = self._agent.request(method, uri, headers, body)
+        return deferred
 
     def _sendRequest(self, entityType, request, entityId=None, params=None):
         """Return a deferred sendRequest with the proper facade_version."""
