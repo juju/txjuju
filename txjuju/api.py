@@ -564,6 +564,14 @@ class Juju2APIClient(object):
         deferred = self._sendRequest("Client", "AddCharm", params=params)
         return deferred.addCallback(self._parseAddCharm)
 
+    def upload_charm(self, charmurl, charm):
+        """Return the charm ID after uploading to the controller.
+
+        @param charmurl: The charm URL to use for the charm.
+        @param charm: A Charm containing the charm's info and data.
+        """
+        raise NotImplementedError
+
     def addUnit(self, serviceName, scope, directive):
         """Add a unit to a Juju service.
 
@@ -1008,6 +1016,9 @@ class Juju1APIClient(Juju2APIClient):
             serviceName, charmURL, scope, directive, config)
         deferred = self._sendRequest("Client", "ServiceDeploy", params=params)
         return deferred.addCallback(lambda _: None)  # No data in the response
+
+    def upload_charm(self, charmurl, charm):
+        raise RuntimeError("not supported under Juju 1.X")
 
     def addUnit(self, serviceName, scope, directive):
         """Add a unit to a Juju service in Juju 1.X.
