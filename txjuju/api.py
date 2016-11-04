@@ -620,6 +620,15 @@ class Juju2APIClient(APIClient):
         @param charmurl: The charm URL to use for the charm.
         @param charm: A Charm containing the charm's info and data.
         """
+        body = charm.open_as_zip_file()
+        args = {"series": charmurl.series,
+                "schema": charmurl.schema,
+                "revision": charmurl.revision,
+                }
+        deferred = self._send_http_request("POST", "/charms", "application/zip", body, args)
+        return deferred.addCallback(self._parseUploadCharm)
+
+    def _parseUploadCharm(self, response):
         raise NotImplementedError
 
     def addUnit(self, serviceName, scope, directive):
