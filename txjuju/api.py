@@ -26,7 +26,7 @@ from twisted.web.client import Agent, FileBodyProducer
 from twisted.web.http_headers import Headers
 
 from ._twisted.websocketsclient import WebSocketsEndpoint
-from .protocol import APIClientFactory
+from .protocol import APIClientFactory, handle_response
 from .api_data import (
     ModelInfo, CloudInfo, UnitInfo, ApplicationInfo, WatcherDelta,
     ApplicationConfig, AnnotationInfo, MachineInfo, ActionInfo, RunResult,
@@ -626,10 +626,9 @@ class Juju2APIClient(APIClient):
                 "revision": charmurl.revision,
                 }
         deferred = self._send_http_request("POST", "/charms", "application/zip", body, args)
-        return deferred.addCallback(self._parseUploadCharm)
-
-    def _parseUploadCharm(self, response):
-        raise NotImplementedError
+        deferred.addCallback(handle_response)
+        deferred.addCallback(self._parseUploadCharm)
+        return deferred
 
     def addUnit(self, serviceName, scope, directive):
         """Add a unit to a Juju service.
@@ -918,6 +917,13 @@ class Juju2APIClient(APIClient):
             response[self._getParam("charm")],
             constraints=response.get(self._getParam("constraints")),
             config=response.get(self._getParam("config")))
+
+    def _parseUploadCharm(self, response):
+        # We ignore "files".
+        try:
+            return response["charm-url"]
+        except KeyError:
+            raise APIRequestError("malformed result {}".format(result), "")
 
     def _parseAddMachines(self, response):
         """Parse the response of a L{addMachines} request."""
