@@ -9,6 +9,7 @@ from json import dumps, loads
 
 from twisted.internet.defer import Deferred
 from twisted.internet.protocol import Protocol, Factory
+from twisted.web.client import readBody
 
 from .errors import APIRequestError, APIAuthError, APIRetriableError
 
@@ -105,22 +106,51 @@ class APIClientProtocol(Protocol):
 
     def dataReceived(self, message):
         """Parse responses from the server and fire the relevant deferreds."""
-        # Decode the JSON message
-        payload = loads(message)
+        reqid, response, error = _parse_response(message)
 
         # Fire the deferred associated with this response.
-        deferred = self._outstandingRequests.pop(payload.pop("RequestId"))
-        error = payload.pop("Error", None)
+        deferred = self._outstandingRequests.pop(reqid)
         if error is not None:
-            # ErrorCode is present only for errors that support it, otherwise
-            # it's an empty string that gets omitted by the payload (due to
-            # the 'omitempty' annotation in the outMsg struct of
-            # juju/rpc/jsoncodec/codec.go.
-            code = payload.pop("ErrorCode", "")
-            error_class = ERROR_CODES.get(code, APIRequestError)
-            deferred.errback(error_class(error, code))
+            deferred.errback(error)
         else:
-            deferred.callback(payload.pop("Response", {}))
+            deferred.callback(response)
+
+
+def parse_response(message):
+    """Parse responses from the server and return the result."""
+    _, response, error = _parse_response(message)
+    if error is not None:
+        raise error
+    return response
+
+
+def _parse_response(message):
+    # Decode the JSON message
+    payload = loads(message)
+
+    reqid = payload.pop("RequestId")
+    error = payload.pop("Error", None)
+    if error is not None:
+        # ErrorCode is present only for errors that support it, otherwise
+        # it's an empty string that gets omitted by the payload (due to
+        # the 'omitempty' annotation in the outMsg struct of
+        # juju/rpc/jsoncodec/codec.go.
+        code = payload.pop("ErrorCode", "")
+        error_class = ERROR_CODES.get(code, APIRequestError)
+        error = error_class(error, code)
+    try:
+        response = payload.pop("Response")
+    except KeyError:
+        response = payload
+    return reqid, response, error
+
+
+def handle_response(response):
+    """Return the response body."""
+    # TODO: fail if response.code != 200?
+    d = readBody(response)
+    d.addCallback(parse_response)
+    return d
 
 
 class APIClientFactory(Factory):
