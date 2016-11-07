@@ -2,8 +2,35 @@
 
 """Hold state information for the various Juju API entities."""
 
+import inspect
 
-class APIInfo(object):
+
+class ObjectWithRepr(object):
+    """A base class that provides a repr based on __init__().
+
+    If necessary, subclasses may set _ARG_TO_ATTR to a mapping from
+    arg names to attribute names.
+    """
+
+    _ARG_TO_ATTR = None
+
+    def __repr__(self):
+        argnames = inspect.getargspec(self.__init__.__func__).args
+        argnames = argnames[1:]  # Drop self.
+        values = {}
+        attrnames = self._ARG_TO_ATTR or {}
+        for name in argnames:
+            try:
+                values[name] = getattr(self, name)
+            except AttributeError:
+                attrname = attrnames.get(name, name)
+                values[name] = getattr(self, attrname)
+        args = ", ".join("{}={!r}".format(name, values[name])
+                         for name in argnames)
+        return "{}({})".format(type(self).__name__, args)
+
+
+class APIInfo(ObjectWithRepr):
     """State information about model API services."""
 
     def __init__(self, endpoints, uuid):
@@ -11,7 +38,7 @@ class APIInfo(object):
         self.uuid = uuid
 
 
-class ModelInfo(object):
+class ModelInfo(ObjectWithRepr):
     """State information about the model.
 
     See https://godoc.org/github.com/juju/juju/apiserver/params#ModelInfo.
@@ -32,7 +59,7 @@ class ModelInfo(object):
         self.cloudCredentialTag = cloudCredentialTag
 
 
-class CloudInfo(object):
+class CloudInfo(ObjectWithRepr):
     """State information about a single cloud.
 
     See https://godoc.org/github.com/juju/juju/apiserver/params#Cloud.
@@ -47,7 +74,7 @@ class CloudInfo(object):
         self.regions = regions
 
 
-class MachineInfo(object):
+class MachineInfo(ObjectWithRepr):
     """State information about a single machine."""
 
     def __init__(self, id, instanceId=u"", status=u"pending",
@@ -70,7 +97,7 @@ class MachineInfo(object):
         return bool(stateServerJobs.intersection(set(self.jobs)))
 
 
-class ApplicationInfo(object):
+class ApplicationInfo(ObjectWithRepr):
     """State information about a single application."""
 
     def __init__(self, name, exposed=False, charmURL=None, life=None,
@@ -83,7 +110,7 @@ class ApplicationInfo(object):
         self.config = config
 
 
-class UnitInfo(object):
+class UnitInfo(ObjectWithRepr):
     """State information about a single unit."""
 
     def __init__(self, name, applicationName, series=None, charmURL=None,
@@ -101,7 +128,7 @@ class UnitInfo(object):
         self.statusInfo = statusInfo
 
 
-class ActionInfo(object):
+class ActionInfo(ObjectWithRepr):
     """State information about an action."""
 
     def __init__(self, id, name, receiver, status, message="", results=None):
@@ -113,7 +140,7 @@ class ActionInfo(object):
         self.results = results or {}
 
 
-class WatcherDelta(object):
+class WatcherDelta(ObjectWithRepr):
     """State information about a single entity delta.
 
     @ivar kind: What kind of entity the delta is about, can be:
@@ -136,7 +163,7 @@ class WatcherDelta(object):
         self.info = info
 
 
-class ApplicationConfig(object):
+class ApplicationConfig(ObjectWithRepr):
     """Describes the configuration of a particular application.
 
     @ivar application: The name of the application this config is for.
@@ -144,6 +171,8 @@ class ApplicationConfig(object):
     @ivar constraints: The constraints the application was deployed
         with.
     """
+
+    _ARG_TO_ATTR = {"config": "_config"}
 
     def __init__(self, application, charm, constraints=None, config=None):
         """
@@ -169,7 +198,7 @@ class ApplicationConfig(object):
             return option.get("value")
 
 
-class AnnotationInfo(object):
+class AnnotationInfo(ObjectWithRepr):
     """Hold information about the annotations on a particular entity.
 
     @ivar name: The tag attribute of the annotation.
@@ -177,6 +206,8 @@ class AnnotationInfo(object):
     @ivar entityId: The id of the annotated entity (e.g. "mysql/0").
     @ivar pairs: A C{dict} of C{str} to C{str} with the current annotations.
     """
+
+    _ARG_TO_ATTR = {"tag": "name"}
 
     def __init__(self, tag, pairs):
         """
@@ -190,7 +221,7 @@ class AnnotationInfo(object):
         self.pairs = pairs
 
 
-class RunResult(object):
+class RunResult(ObjectWithRepr):
     """Results from a Juju run request.
 
     @ivar stdout: The stdout from the command.
