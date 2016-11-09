@@ -607,7 +607,10 @@ class Juju2APIClient(object):
         return response[self._getParam("watcher-id")]
 
     def _parseAllWatcherNext(self, response):
-        """Parse the response of an L{AllWatcherNext} request."""
+        """Parse the response of an AllWatcherNext request.
+
+        See github.com/juju/juju/state/multiwatcher/multiwatcher.go.
+        """
         deltas = []
         for kind, verb, data in response[self._getParam("deltas")]:
             info = self._parseAllWatcherNextDelta(kind, data)

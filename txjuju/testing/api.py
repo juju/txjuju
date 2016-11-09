@@ -137,6 +137,8 @@ class FakeAPIBackend(object):
             instance of a Juju entity (from c.juju.entity) or a 2-tuple of
             the form (<instance>, <verb>), where <instance> is the Juju
             entity and <verb> is either 'change' or 'remove'.
+
+        See _parseAllWatcherNextDelta() in txjuju/api.py.
         """
         responses = []
         for delta in deltas:
@@ -195,9 +197,19 @@ class FakeAPIBackend(object):
 
     def _formatApplicationInfo(self, info, verb):
         if self.version.startswith("2."):
-            return ["application", verb, {
+            formatted = {
                 "name": info.name,
-                "charm-url": info.charmURL}]
+                "exposed": info.exposed,
+                }
+            if info.charmURL is not None:
+                formatted["charm-url"] = info.charmURL
+            if info.life is not None:
+                formatted["life"] = info.life
+            if info.constraints is not None:
+                formatted["constraints"] = info.constraints
+            if info.config is not None:
+                formatted["config"] = info.config
+            return ["application", verb, formatted]
         else:
             return ["service", verb, {
                 "Name": info.name,
@@ -205,10 +217,28 @@ class FakeAPIBackend(object):
 
     def _formatUnitInfo(self, info, verb):
         if self.version.startswith("2."):
-            return ["unit", verb, {
+            formatted = {
                 "name": info.name,
                 "application": info.applicationName,
-                "charm-url": info.charmURL}]
+                }
+            if info.series is not None:
+                formatted["series"] = info.series
+            if info.charmURL is not None:
+                formatted["charm-url"] = info.charmURL
+            if info.publicAddress is not None:
+                formatted["public-address"] = info.publicAddress
+            if info.privateAddress is not None:
+                formatted["private-address"] = info.privateAddress
+            if info.machineId:
+                formatted["machine-id"] = info.machineId
+            if info.ports:
+                formatted["ports"] = info.ports
+            if info.status is not None:
+                formatted["agent-status"] = {
+                    "current": info.status,
+                    "message": info.statusInfo or ""
+                    }
+            return ["unit", verb, formatted]
         else:
             return ["unit", verb, {
                 "Name": info.name,
@@ -217,10 +247,24 @@ class FakeAPIBackend(object):
 
     def _formatMachineInfo(self, info, verb):
         if self.version.startswith("2."):
-            return ["machine", verb, {
+            formatted = {
                 "id": info.id,
                 "instance-id": info.instanceId,
-                "agent-status": info.status}]
+                }
+            if info.jobs is not None:
+                formatted["jobs"] = info.jobs
+            if info.address is not None:
+                formatted["addresses"] = [info.address]
+            if info.hasVote is not None:
+                formatted["has-vote"] = info.hasVote
+            if info.wantsVote is not None:
+                formatted["wants-vote"] = info.wantsVote
+            if info.status is not None:
+                formatted["agent-status"] = {
+                    "current": info.status,
+                    "message": info.statusInfo or ""
+                    }
+            return ["machine", verb, formatted]
         else:
             return ["machine", verb, {
                 "Id": info.id,
