@@ -201,6 +201,7 @@ class FakeAPIBackend(object):
                 "name": info.name,
                 "exposed": info.exposed,
                 }
+            # TODO: None of these should be optional except config.
             if info.charmURL is not None:
                 formatted["charm-url"] = info.charmURL
             if info.life is not None:
@@ -221,6 +222,7 @@ class FakeAPIBackend(object):
                 "name": info.name,
                 "application": info.applicationName,
                 }
+            # TODO: None of these should be optional.
             if info.series is not None:
                 formatted["series"] = info.series
             if info.charmURL is not None:
@@ -251,6 +253,7 @@ class FakeAPIBackend(object):
                 "id": info.id,
                 "instance-id": info.instanceId,
                 }
+            # TODO: None of these should be optional.
             if info.jobs is not None:
                 formatted["jobs"] = info.jobs
             if info.address is not None:

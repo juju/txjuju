@@ -627,6 +627,7 @@ class Juju2APIClient(object):
         of deltas in a response to an AllWatcherNext Juju API request.
         """
         if kind == "unit":
+            # TODO: None of these should be optional (no data.get).
             status, statusInfo = self._getDeltaJujuStatus(data)
             info = UnitInfo(
                 data[self._getParam("name")],
@@ -641,6 +642,7 @@ class Juju2APIClient(object):
                 statusInfo=statusInfo,
                 )
         elif kind == "application":
+            # TODO: None of these should be optional (no data.get).
             info = ApplicationInfo(
                 data[self._getParam("name")],
                 exposed=data.get(self._getParam("exposed")),
@@ -655,6 +657,7 @@ class Juju2APIClient(object):
                 data[self._getParam("annotations")],
                 )
         elif kind == "machine":
+            # TODO: None of these should be optional (no data.get).
             status, statusInfo = self._getDeltaJujuStatus(data)
             # beta11 addresses will be None instead of [] when pending
             address = self._parseAddresses(
