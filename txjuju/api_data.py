@@ -1,6 +1,9 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
-"""Hold state information for the various Juju API entities."""
+"""Hold state information for the various Juju API entities.
+
+See github.com/juju/juju/state/multiwatcher/multiwatcher.go.
+"""
 
 import inspect
 
@@ -44,6 +47,8 @@ class ModelInfo(ObjectWithRepr):
     See https://godoc.org/github.com/juju/juju/apiserver/params#ModelInfo.
     """
 
+    # TODO: None of these should be optional
+    # except cloudRegion and cloudCredentialTag.
     def __init__(self, name, providerType, defaultSeries, uuid,
                  controllerUUID=None, cloudTag=None, cloudRegion=None,
                  cloudCredentialTag=None):
@@ -65,6 +70,7 @@ class CloudInfo(ObjectWithRepr):
     See https://godoc.org/github.com/juju/juju/apiserver/params#Cloud.
     """
 
+    # TODO: All these except for cloudtype are optional.
     def __init__(self, cloudtype, authTypes, endpoint, storageEndpoint,
                  regions):
         self.cloudtype = cloudtype
@@ -77,6 +83,7 @@ class CloudInfo(ObjectWithRepr):
 class MachineInfo(ObjectWithRepr):
     """State information about a single machine."""
 
+    # TODO: None of these should be optional.
     def __init__(self, id, instanceId=u"", status=u"pending",
                  statusInfo=u"", jobs=None, address=None,
                  hasVote=None, wantsVote=None):
@@ -100,6 +107,7 @@ class MachineInfo(ObjectWithRepr):
 class ApplicationInfo(ObjectWithRepr):
     """State information about a single application."""
 
+    # TODO: None of these should be optional except config.
     def __init__(self, name, exposed=False, charmURL=None, life=None,
                  constraints=None, config=None):
         self.name = name
@@ -113,6 +121,7 @@ class ApplicationInfo(ObjectWithRepr):
 class UnitInfo(ObjectWithRepr):
     """State information about a single unit."""
 
+    # TODO: None of these should be optional.
     def __init__(self, name, applicationName, series=None, charmURL=None,
                  publicAddress=None, privateAddress=None, machineId=u"",
                  ports=(), status=None, statusInfo=u""):
