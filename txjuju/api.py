@@ -733,14 +733,8 @@ class Juju2APIClient(object):
 
     def _parseRun(self, response):
         """Parse the response of a run request."""
-        results = {}
-        for result in response[self._getParam("results")]:
-            results[result["UnitId"]] = RunResult(
-                result["Stdout"].decode("base64"),
-                result["Stderr"].decode("base64"),
-                result["Code"],
-                result["Error"])
-        return results
+        # juju-2.0 uses asynch behavior and returns a list of pending actions
+        return self._parseEnqueueActions(response)
 
     def _parseRunOnAllMachines(self, response):
         """Parse the response of a runOnAllMachines request."""
@@ -931,6 +925,17 @@ class Juju1APIClient(Juju2APIClient):
             kind = "application"
         return (super(Juju1APIClient, self)
                 )._parseAllWatcherNextDelta(kind, data)
+
+    def _parseRun(self, response):
+        """Parse the response of a run request."""
+        results = {}
+        for result in response[self._getParam("results")]:
+            results[result["UnitId"]] = RunResult(
+                result["Stdout"].decode("base64"),
+                result["Stderr"].decode("base64"),
+                result["Code"],
+                result["Error"])
+        return results
 
     def _parseRunOnAllMachines(self, response):
         """Parse the response of a runOnAllMachines request."""
