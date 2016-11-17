@@ -128,9 +128,11 @@ class UnitInfoTest(TestCase):
 
     def test___repr___full(self):
         """UnitInfo has a useful repr when initialized with all args."""
+        agent_status = StatusInfo("active", "a-ok")
+        workload_status = StatusInfo("maintenance", "")
         info = UnitInfo(
             "spam/1", "spam", "trusty", "some-url", "localhost", "localhost",
-            "1", ["80"], "alive", "some info")
+            "1", ["80"], agent_status, workload_status)
         result = repr(info)
 
         self.assertEqual(
@@ -138,8 +140,10 @@ class UnitInfoTest(TestCase):
             ("UnitInfo(name='spam/1', applicationName='spam',"
              " series='trusty', charmURL='some-url',"
              " publicAddress='localhost', privateAddress='localhost',"
-             " machineId='1', ports=['80'], status='alive',"
-             " statusInfo='some info')"))
+             " machineId='1', ports=['80'],"
+             " agent_status=StatusInfo(current='active', message='a-ok'),"
+             " workload_status=StatusInfo(current='maintenance', message='')"
+             ")"))
 
     def test___repr___minimal(self):
         """UnitInfo has a useful repr when initialized with minimal args."""
@@ -150,7 +154,30 @@ class UnitInfoTest(TestCase):
             result,
             ("UnitInfo(name='spam/1', applicationName='spam', series=None,"
              " charmURL=None, publicAddress=None, privateAddress=None,"
-             " machineId=u'', ports=(), status=None, statusInfo=u'')"))
+             " machineId=u'', ports=(),"
+             " agent_status=None, workload_status=None)"))
+
+    def test_status(self):
+        """UnitInfo.status is a backward-compatibility shim around
+        workload_status.current."""
+        agent_status = StatusInfo("active", "a-ok")
+        workload_status = StatusInfo("maintenance", "")
+        info = UnitInfo(
+            "spam/1", "spam", "trusty", "some-url", "localhost", "localhost",
+            "1", ["80"], agent_status, workload_status)
+
+        self.assertEqual(info.status, info.workload_status.current)
+
+    def test_statusInfo(self):
+        """UnitInfo.statusInfo is a backward-compatibility shim around
+        workload_status.message."""
+        agent_status = StatusInfo("active", "a-ok")
+        workload_status = StatusInfo("maintenance", "")
+        info = UnitInfo(
+            "spam/1", "spam", "trusty", "some-url", "localhost", "localhost",
+            "1", ["80"], agent_status, workload_status)
+
+        self.assertEqual(info.statusInfo, info.workload_status.message)
 
 
 class ApplicationConfigTest(TestCase):
@@ -236,16 +263,18 @@ class MachineInfoTest(TestCase):
 
     def test___repr___full(self):
         """MachineInfo has a useful repr when initialized with all args."""
+        agent_status = StatusInfo("active", "a-ok")
         info = MachineInfo(
-            "1", "inst1", "alive", "some info", ["JobHostUnits"],
+            "1", "inst1", agent_status, ["JobHostUnits"],
             "localhost", False, True)
         result = repr(info)
 
         self.assertEqual(
             result,
-            ("MachineInfo(id='1', instanceId='inst1', status='alive',"
-             " statusInfo='some info', jobs=['JobHostUnits'],"
-             " address='localhost', hasVote=False, wantsVote=True)"))
+            ("MachineInfo(id='1', instanceId='inst1',"
+             " agent_status=StatusInfo(current='active', message='a-ok'),"
+             " jobs=['JobHostUnits'], address='localhost',"
+             " hasVote=False, wantsVote=True)"))
 
     def test___repr___minimal(self):
         """MachineInfo has a useful repr when initialized with minimal args."""
@@ -254,26 +283,36 @@ class MachineInfoTest(TestCase):
 
         self.assertEqual(
             result,
-            ("MachineInfo(id='1', instanceId=u'', status=u'pending',"
-             " statusInfo=u'', jobs=[], address=None,"
-             " hasVote=None, wantsVote=None)"))
+            ("MachineInfo(id='1', instanceId=u'',"
+             " agent_status=StatusInfo(current='pending', message=''),"
+             " jobs=[], address=None, hasVote=None, wantsVote=None)"))
 
     def test_defaults(self):
         """A MachineInfo can be created with default values."""
         info = MachineInfo("1")
         self.assertEqual("1", info.id)
         self.assertEqual("", info.instanceId)
-        self.assertEqual("pending", info.status)
-        self.assertEqual("", info.statusInfo)
+        self.assertEqual(StatusInfo("pending"), info.agent_status)
         self.assertEqual([], info.jobs)
         self.assertIsNone(info.address)
         self.assertIsNone(info.hasVote)
         self.assertIsNone(info.wantsVote)
 
-    def test_status_info(self):
-        "The statusInfo field can be set when creating a MachineInfo."""
-        info = MachineInfo("1", statusInfo="some info")
-        self.assertEqual("some info", info.statusInfo)
+    def test_status(self):
+        """MachineInfo.status is a backward-compatibility shim around
+        agent_status.current."""
+        agent_status = StatusInfo("active", "a-ok")
+        info = MachineInfo("1", agent_status=agent_status)
+
+        self.assertEqual(info.status, info.agent_status.current)
+
+    def test_statusInfo(self):
+        """MachineInfo.statusInfo is a backward-compatibility shim around
+        agent_status.message."""
+        agent_status = StatusInfo("active", "a-ok")
+        info = MachineInfo("1", agent_status=agent_status)
+
+        self.assertEqual(info.statusInfo, info.agent_status.message)
 
     def test_is_state_server_false(self):
         """
@@ -374,9 +413,9 @@ class WatcherDeltaTest(TestCase):
         self.assertEqual(
             result,
             ("WatcherDelta(kind='machine', verb='change',"
-             " info=MachineInfo(id='1', instanceId=u'', status=u'pending',"
-             " statusInfo=u'', jobs=[], address=None, hasVote=None,"
-             " wantsVote=None))"))
+             " info=MachineInfo(id='1', instanceId=u'',"
+             " agent_status=StatusInfo(current='pending', message=''),"
+             " jobs=[], address=None, hasVote=None, wantsVote=None))"))
 
 
 class RunResultTest(TestCase):
