@@ -3,7 +3,7 @@
 from unittest import TestCase
 
 from txjuju.api_data import (
-    APIInfo, ModelInfo, CloudInfo, WatcherDelta,
+    APIInfo, ModelInfo, CloudInfo, WatcherDelta, StatusInfo,
     MachineInfo, ApplicationInfo, UnitInfo, ActionInfo, AnnotationInfo,
     ApplicationConfig, RunResult)
 
@@ -18,6 +18,42 @@ class APIInfoTest(TestCase):
         self.assertEqual(
             result,
             "APIInfo(endpoints=['localhost:12345'], uuid='some-uuid')")
+
+
+class StatusInfoTest(TestCase):
+
+    def test_all_args(self):
+        """StatusInfo.__init__() works when provided all arguments."""
+        info = StatusInfo("active", "a-ok")
+
+        self.assertEqual(info.current, "active")
+        self.assertEqual(info.message, "a-ok")
+
+    def test_current_None(self):
+        """StatusInfo.__init__() allows current to be None."""
+        info = StatusInfo(None)
+
+        self.assertIs(info.current, None)
+
+    def test_all_defaults(self):
+        """StatusInfo.__init__() has some default arguments."""
+        info = StatusInfo("active")
+
+        self.assertEqual(info.current, "active")
+        self.assertEqual(info.message, "")
+
+    def test_missing_required(self):
+        """StatusInfo.__init__() has some required arguments."""
+        with self.assertRaises(TypeError):
+            StatusInfo()
+
+    def test___repr__(self):
+        """StatusInfo has a useful repr."""
+        info = StatusInfo("active", "a-ok")
+        result = repr(info)
+
+        self.assertEqual(
+            result, "StatusInfo(current='active', message='a-ok')")
 
 
 class ModelInfoTest(TestCase):

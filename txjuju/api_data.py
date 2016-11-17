@@ -41,6 +41,20 @@ class APIInfo(ObjectWithRepr):
         self.uuid = uuid
 
 
+class StatusInfo(ObjectWithRepr):
+    """The status of an entity.
+
+    See https://godoc.org/github.com/juju/juju/state/multiwatcher#StatusInfo.
+    """
+
+    def __init__(self, current, message=""):
+        # TODO: Ensure current is one of the valid status values,
+        # e.g. "active"?  It depends on the entity and agent vs. workload.
+        # TODO: Require a message if current is "error"?
+        self.current = current
+        self.message = message
+
+
 class ModelInfo(ObjectWithRepr):
     """State information about the model.
 
