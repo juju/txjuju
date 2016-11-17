@@ -47,7 +47,7 @@ for path, dirs, files in os.walk(package_name):
 
 DEPS = [
         'twisted',
-        'yaml',
+        'pyyaml',
         ]
 TESTING_DEPS = [
         'fixtures',
