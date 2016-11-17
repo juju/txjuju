@@ -41,6 +41,33 @@ class APIInfo(ObjectWithRepr):
         self.uuid = uuid
 
 
+class StatusInfo(ObjectWithRepr):
+    """The status of an entity.
+
+    See https://godoc.org/github.com/juju/juju/state/multiwatcher#StatusInfo.
+    """
+
+    def __init__(self, current, message=""):
+        # TODO: Ensure current is one of the valid status values,
+        # e.g. "active"?  It depends on the entity and agent vs. workload.
+        # TODO: Require a message if current is "error"?
+        self.current = current
+        self.message = message
+
+    def __eq__(self, other):
+        try:
+            other_current = other.current
+            other_message = other.message
+        except AttributeError:
+            return NotImplemented
+
+        if self.current != other_current:
+            return False
+        if self.message != other_message:
+            return False
+        return True
+
+
 class ModelInfo(ObjectWithRepr):
     """State information about the model.
 
@@ -84,17 +111,27 @@ class MachineInfo(ObjectWithRepr):
     """State information about a single machine."""
 
     # TODO: None of these should be optional.
-    def __init__(self, id, instanceId=u"", status=u"pending",
-                 statusInfo=u"", jobs=None, address=None,
+    def __init__(self, id, instanceId=u"", agent_status=None,
+                 jobs=None, address=None,
                  hasVote=None, wantsVote=None):
         self.id = id
         self.instanceId = instanceId
-        self.status = status
-        self.statusInfo = statusInfo
+        self.agent_status = agent_status or StatusInfo("pending")
         self.jobs = jobs if jobs is not None else []
         self.address = address
         self.hasVote = hasVote
         self.wantsVote = wantsVote
+
+    # TODO: status and statusInfo are backward-compatibility shims
+    # and may be removed later.
+
+    @property
+    def status(self):
+        return self.agent_status.current
+
+    @property
+    def statusInfo(self):
+        return self.agent_status.message
 
     @property
     def is_state_server(self):
@@ -124,7 +161,7 @@ class UnitInfo(ObjectWithRepr):
     # TODO: None of these should be optional.
     def __init__(self, name, applicationName, series=None, charmURL=None,
                  publicAddress=None, privateAddress=None, machineId=u"",
-                 ports=(), status=None, statusInfo=u""):
+                 ports=(), agent_status=None, workload_status=None):
         self.name = name
         self.applicationName = applicationName
         self.series = series
@@ -133,8 +170,19 @@ class UnitInfo(ObjectWithRepr):
         self.privateAddress = privateAddress
         self.machineId = machineId
         self.ports = ports
-        self.status = status
-        self.statusInfo = statusInfo
+        self.agent_status = agent_status
+        self.workload_status = workload_status
+
+    # TODO: status and statusInfo are backward-compatibility shims
+    # and may be removed later.
+
+    @property
+    def status(self):
+        return self.workload_status.current
+
+    @property
+    def statusInfo(self):
+        return self.workload_status.message
 
 
 class ActionInfo(ObjectWithRepr):

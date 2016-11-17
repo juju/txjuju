@@ -8,6 +8,7 @@ from twisted.test.proto_helpers import MemoryReactorClock
 
 from txjuju.api import (
     Endpoint, Juju1APIClient, Juju2APIClient, MACHINE_SCOPE)
+from txjuju.api_data import StatusInfo
 from txjuju.errors import (
     APIRequestError, InvalidAPIEndpointAddress, AllWatcherStoppedError)
 from txjuju.protocol import APIClientFactory
@@ -1398,9 +1399,62 @@ class Juju2APIClientTest(TestCase):
         self.assertEqual("stopped", delta.info.status)
         self.assertEqual("machine is dead", delta.info.statusInfo)
         self.assertEqual(
+            StatusInfo("stopped", "machine is dead"), delta.info.agent_status)
+        self.assertEqual(
             [u"JobManageModel", u"JobHostUnits"], delta.info.jobs)
         self.assertIsNone(delta.info.hasVote)
         self.assertIsNone(delta.info.wantsVote)
+
+    def test_allWatcherNext_unit(self):
+        """
+        The allWatcherNext method sends a 'Next' request against the given
+        allWatcher ID. If the returned response contains a unit, a relevant
+        WatcherDelta object will be returned.
+        """
+        deferred = self.client.allWatcherNext("1")
+        self.assertEqual("AllWatcher", self.backend.lastType)
+        self.assertEqual("Next", self.backend.lastRequest)
+        self.assertEqual(1, self.backend.lastVersion)
+        self.assertEqual("1", self.backend.lastId)
+        self.backend.response(
+            {u"deltas": [
+                [u"unit", u"change", {
+                    u"name": u"mysql/0",
+                    u"application": u"mysql",
+                    u"series": u"precise",
+                    u"charm-url": u"cs:precise/mysql-9",
+                    u"public-address": u"ec2-1-2-3-4.aws.com",
+                    u"private-address": u"ip-1.internal",
+                    u"machine-id": u"1",
+                    u"ports": [],
+                    u"agent-status": {
+                        u"current": u"active",
+                        u"message": u"a-ok",
+                        },
+                    u"workload-status": {
+                        u"current": u"maintenance",
+                        u"message": u"installing...",
+                        },
+                    }],
+                ]})
+        [delta] = self.successResultOf(deferred)
+        self.assertEqual("unit", delta.kind)
+        self.assertEqual("change", delta.verb)
+        self.assertEqual("mysql/0", delta.info.name)
+        self.assertEqual("mysql", delta.info.applicationName)
+        self.assertEqual("precise", delta.info.series)
+        self.assertEqual("cs:precise/mysql-9", delta.info.charmURL)
+        self.assertEqual("ec2-1-2-3-4.aws.com", delta.info.publicAddress)
+        self.assertEqual("ip-1.internal", delta.info.privateAddress)
+        self.assertEqual("1", delta.info.machineId)
+        self.assertEqual([], delta.info.ports)
+        self.assertEqual(
+            StatusInfo("active", "a-ok"),
+            delta.info.agent_status)
+        self.assertEqual(
+            StatusInfo("maintenance", "installing..."), delta.info.workload_status)
+        self.assertEqual("maintenance", delta.info.status)
+        self.assertEqual("installing...", delta.info.statusInfo)
 
     def test_enqueueAction(self):
         """

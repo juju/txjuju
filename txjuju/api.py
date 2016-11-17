@@ -25,7 +25,7 @@ from .protocol import APIClientFactory
 from .api_data import (
     ModelInfo, CloudInfo, UnitInfo, ApplicationInfo, WatcherDelta,
     ApplicationConfig, AnnotationInfo, MachineInfo, ActionInfo, RunResult,
-    APIInfo)
+    APIInfo, StatusInfo)
 from .errors import (
     APIRequestError, InvalidAPIEndpointAddress, AllWatcherStoppedError)
 
@@ -596,11 +596,12 @@ class Juju2APIClient(object):
             cloud.get(self._getParam("regions"), []),
             )
 
-    def _getDeltaJujuStatus(self, delta):
+    def _getDeltaJujuStatus(self, delta, key="agent-status"):
         """Return a tuple of juju status and status-info for juju2 deltas."""
-        jujuStatus = delta.get(self._getParam("agent-status"), {})
-        return (jujuStatus.get(self._getParam("current"), u""),
-                jujuStatus.get(self._getParam("message"), u""))
+        jujuStatus = delta.get(self._getParam(key), {})
+        return StatusInfo(
+            jujuStatus.get(self._getParam("current"), u""),
+            jujuStatus.get(self._getParam("message"), u""))
 
     def _parseWatchAll(self, response):
         """Parse the response of a L{watchAll} request."""
@@ -628,7 +629,8 @@ class Juju2APIClient(object):
         """
         if kind == "unit":
             # TODO: None of these should be optional (no data.get).
-            status, statusInfo = self._getDeltaJujuStatus(data)
+            workload_status = self._getDeltaJujuStatus(data, "workload-status")
+            agent_status = self._getDeltaJujuStatus(data, "agent-status")
             info = UnitInfo(
                 data[self._getParam("name")],
                 data[self._getParam("application")],
@@ -638,8 +640,8 @@ class Juju2APIClient(object):
                 privateAddress=data.get(self._getParam("private-address")),
                 machineId=data.get(self._getParam("machine-id")),
                 ports=data.get(self._getParam("ports")),
-                status=status,
-                statusInfo=statusInfo,
+                workload_status=workload_status,
+                agent_status=agent_status,
                 )
         elif kind == "application":
             # TODO: None of these should be optional (no data.get).
@@ -658,15 +660,14 @@ class Juju2APIClient(object):
                 )
         elif kind == "machine":
             # TODO: None of these should be optional (no data.get).
-            status, statusInfo = self._getDeltaJujuStatus(data)
+            agent_status = self._getDeltaJujuStatus(data, "agent-status")
             # beta11 addresses will be None instead of [] when pending
             address = self._parseAddresses(
                 data.get(self._getParam("addresses")) or [])
             info = MachineInfo(
                 data[self._getParam("id")],
                 instanceId=data[self._getParam("instance-id")],
-                status=status,
-                statusInfo=statusInfo,
+                agent_status=agent_status,
                 jobs=data.get(self._getParam("jobs")),
                 address=address,
                 hasVote=data.get(self._getParam("has-vote")),
@@ -912,9 +913,10 @@ class Juju1APIClient(Juju2APIClient):
         """Parse the response of a modelInfo request."""
         return self._parseModelInfoResult(response)
 
-    def _getDeltaJujuStatus(self, delta):
+    def _getDeltaJujuStatus(self, delta, key=None):
         """Return a tuple of juju status and status-info for juju1 deltas."""
-        return delta.get("Status", u""), delta.get("StatusInfo", u"")
+        return StatusInfo(
+            delta.get("Status", u""), delta.get("StatusInfo", u""))
 
     def _getPlacementParam(self, scope=None, directive=None):
         """Return placement parameter for Juju 1.0."""
