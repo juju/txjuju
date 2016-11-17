@@ -596,9 +596,9 @@ class Juju2APIClient(object):
             cloud.get(self._getParam("regions"), []),
             )
 
-    def _getDeltaJujuStatus(self, delta):
+    def _getDeltaJujuStatus(self, delta, key="agent-status"):
         """Return a tuple of juju status and status-info for juju2 deltas."""
-        jujuStatus = delta.get(self._getParam("agent-status"), {})
+        jujuStatus = delta.get(self._getParam(key), {})
         return (jujuStatus.get(self._getParam("current"), u""),
                 jujuStatus.get(self._getParam("message"), u""))
 
@@ -628,7 +628,8 @@ class Juju2APIClient(object):
         """
         if kind == "unit":
             # TODO: None of these should be optional (no data.get).
-            status, statusInfo = self._getDeltaJujuStatus(data)
+            status, statusInfo = self._getDeltaJujuStatus(
+                data, key="workload-status")
             info = UnitInfo(
                 data[self._getParam("name")],
                 data[self._getParam("application")],
@@ -912,7 +913,7 @@ class Juju1APIClient(Juju2APIClient):
         """Parse the response of a modelInfo request."""
         return self._parseModelInfoResult(response)
 
-    def _getDeltaJujuStatus(self, delta):
+    def _getDeltaJujuStatus(self, delta, key=None):
         """Return a tuple of juju status and status-info for juju1 deltas."""
         return delta.get("Status", u""), delta.get("StatusInfo", u"")
 
