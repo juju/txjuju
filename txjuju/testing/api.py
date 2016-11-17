@@ -235,10 +235,15 @@ class FakeAPIBackend(object):
                 formatted["machine-id"] = info.machineId
             if info.ports:
                 formatted["ports"] = info.ports
-            if info.status is not None:
+            if info.agent_status is not None:
                 formatted["agent-status"] = {
-                    "current": info.status,
-                    "message": info.statusInfo or ""
+                    "current": info.agent_status.current or "",
+                    "message": info.agent_status.message or "",
+                    }
+            if info.workload_status is not None:
+                formatted["workload-status"] = {
+                    "current": info.workload_status.current or "",
+                    "message": info.workload_status.message or "",
                     }
             return ["unit", verb, formatted]
         else:
