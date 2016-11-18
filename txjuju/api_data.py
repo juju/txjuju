@@ -47,7 +47,7 @@ class StatusInfo(ObjectWithRepr):
     See https://godoc.org/github.com/juju/juju/state/multiwatcher#StatusInfo.
     """
 
-    def __init__(self, current, message=""):
+    def __init__(self, current, message=u""):
         # TODO: Ensure current is one of the valid status values,
         # e.g. "active"?  It depends on the entity and agent vs. workload.
         # TODO: Require a message if current is "error"?
@@ -116,7 +116,7 @@ class MachineInfo(ObjectWithRepr):
                  hasVote=None, wantsVote=None):
         self.id = id
         self.instanceId = instanceId
-        self.agent_status = agent_status or StatusInfo("pending")
+        self.agent_status = agent_status or StatusInfo(u"pending")
         self.jobs = jobs if jobs is not None else []
         self.address = address
         self.hasVote = hasVote
@@ -170,8 +170,8 @@ class UnitInfo(ObjectWithRepr):
         self.privateAddress = privateAddress
         self.machineId = machineId
         self.ports = ports
-        self.agent_status = agent_status
-        self.workload_status = workload_status
+        self.agent_status = agent_status or StatusInfo(None)
+        self.workload_status = workload_status or StatusInfo(None)
 
     # TODO: status and statusInfo are backward-compatibility shims
     # and may be removed later.
