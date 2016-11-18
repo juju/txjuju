@@ -6,7 +6,7 @@ See https://godoc.org/github.com/juju/juju/status.
 """
 
 # common to agents
-ERROR = "error"
+ERROR = "error"  # must have a message set
 
 # machine agents
 PENDING = "pending"
@@ -23,6 +23,8 @@ FAILED = "failed"
 LOST = "lost"
 
 # unit workloads and applications
+# MAINTENANCE, WAITING, BLOCKED, and ACTIVE are only set
+# by charm hooks.
 MAINTENANCE = "maintenance"
 TERMINATED = "terminated"  # machine destroyed
 UNKNOWN = "unknown"
