@@ -24,10 +24,10 @@ LOST = "lost"
 
 # unit workloads and applications
 MAINTENANCE = "maintenance"
-TERMINATED = "terminated"  # machine
+TERMINATED = "terminated"  # machine destroyed
 UNKNOWN = "unknown"
 WAITING = "waiting"
-BLOCKED = "failed"
+BLOCKED = "blocked"
 ACTIVE = "active"  # i.e. started
 
 # instances
