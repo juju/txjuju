@@ -1,6 +1,7 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
 import json
+import logging
 import os
 import os.path
 from collections import namedtuple
@@ -478,6 +479,10 @@ def spawn_process(executable, args, env, outfile=None):
     """
     list_args = [executable]
     list_args.extend(args)
+
+    logging.info("running {!r}".format(" ".join(list_args)))
+    import pprint
+    logging.info("OS env:\n" + pprint.pformat(env))
 
     result = Deferred()
     if outfile is None:
