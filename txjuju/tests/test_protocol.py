@@ -146,6 +146,22 @@ class APIClientProtocolTest(TestCase):
         failure.trap(APIRequestError)
         self.assertEqual("", failure.value.code)
 
+    def test_dataReceivedSharedStateWatcherStopped(self):
+        """
+        If a response reports the shared state watcher has stopped, a retriable
+        error is raised.
+        """
+        deferred = self.protocol.sendRequest("Admin", "Login")
+        response = {
+            "RequestId": 1,
+            "Error": "Shared state watcher stopped",
+            "ErrorCode": "shared state watcher was stopped"}
+        self.protocol.dataReceived(dumps(response))
+        failure = self.failureResultOf(deferred)
+        failure.trap(APIRetriableError)
+        self.assertEqual(
+            "shared state watcher was stopped", failure.value.code)
+
     def test_connectionLost(self):
         """
         If the connection is lost, all outstanding requests will errback.
