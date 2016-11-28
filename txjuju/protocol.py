@@ -21,6 +21,7 @@ ERROR_CODES = {
     "watcher was stopped": APIRetriableError,
     "try again": APIRetriableError,
     "excessive contention": APIRetriableError,
+    "shared state watcher was stopped": APIRetriableError,
 }
 
 
