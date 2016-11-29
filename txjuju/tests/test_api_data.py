@@ -155,7 +155,9 @@ class UnitInfoTest(TestCase):
             ("UnitInfo(name='spam/1', applicationName='spam', series=None,"
              " charmURL=None, publicAddress=None, privateAddress=None,"
              " machineId=u'', ports=(),"
-             " agent_status=None, workload_status=None)"))
+             " agent_status=StatusInfo(current=None, message=u''),"
+             " workload_status=StatusInfo(current=None, message=u'')"
+             ")"))
 
     def test_status(self):
         """UnitInfo.status is a backward-compatibility shim around
@@ -284,7 +286,7 @@ class MachineInfoTest(TestCase):
         self.assertEqual(
             result,
             ("MachineInfo(id='1', instanceId=u'',"
-             " agent_status=StatusInfo(current='pending', message=''),"
+             " agent_status=StatusInfo(current=u'pending', message=u''),"
              " jobs=[], address=None, hasVote=None, wantsVote=None)"))
 
     def test_defaults(self):
@@ -414,7 +416,7 @@ class WatcherDeltaTest(TestCase):
             result,
             ("WatcherDelta(kind='machine', verb='change',"
              " info=MachineInfo(id='1', instanceId=u'',"
-             " agent_status=StatusInfo(current='pending', message=''),"
+             " agent_status=StatusInfo(current=u'pending', message=u''),"
              " jobs=[], address=None, hasVote=None, wantsVote=None))"))
 
 

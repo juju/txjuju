@@ -5,6 +5,7 @@
 See github.com/juju/juju/state/multiwatcher/multiwatcher.go.
 """
 
+from collections import namedtuple
 import inspect
 
 
@@ -41,31 +42,20 @@ class APIInfo(ObjectWithRepr):
         self.uuid = uuid
 
 
-class StatusInfo(ObjectWithRepr):
+class StatusInfo(namedtuple("StatusInfo", "current message")):
     """The status of an entity.
 
     See https://godoc.org/github.com/juju/juju/state/multiwatcher#StatusInfo.
     """
 
-    def __init__(self, current, message=u""):
+    def __new__(cls, current, message=u""):
+        return super(StatusInfo, cls).__new__(cls, current, message)
+
+    def __init__(self, *args, **kwargs):
         # TODO: Ensure current is one of the valid status values,
         # e.g. "active"?  It depends on the entity and agent vs. workload.
         # TODO: Require a message if current is "error"?
-        self.current = current
-        self.message = message
-
-    def __eq__(self, other):
-        try:
-            other_current = other.current
-            other_message = other.message
-        except AttributeError:
-            return NotImplemented
-
-        if self.current != other_current:
-            return False
-        if self.message != other_message:
-            return False
-        return True
+        pass
 
 
 class ModelInfo(ObjectWithRepr):
