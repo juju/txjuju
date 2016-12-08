@@ -15,13 +15,18 @@ Example::
     deferred.addCallback(connected)
 
 """
+from collections import namedtuple
 from datetime import timedelta
+import urllib
+import urlparse
 
 import yaml
 from twisted.internet.ssl import ClientContextFactory
+from twisted.web.client import Agent, FileBodyProducer
+from twisted.web.http_headers import Headers
 
 from ._twisted.websocketsclient import WebSocketsEndpoint
-from .protocol import APIClientFactory
+from .protocol import APIClientFactory, handle_response
 from .api_data import (
     ModelInfo, CloudInfo, UnitInfo, ApplicationInfo, WatcherDelta,
     ApplicationConfig, AnnotationInfo, MachineInfo, ActionInfo, RunResult,
@@ -32,11 +37,186 @@ from .errors import (
 
 MACHINE_SCOPE = "#"  # For directives targeting machine or container ids
 
+DEFAULT_PORT = 17070
+
+
+def _normalize_address(host, port=None, defaultport=DEFAULT_PORT):
+    """Return the normalized host and port.
+
+    This means that a missing port will be filled in, the port will be
+    an int.  Invalid values will result in InvalidAPIEndpointAddress.
+    """
+    if port:
+        addr = "{}:{}".format(host, port)
+    else:
+        addr = host
+        host, sep, port = addr.partition(":")
+        if not sep:
+            port = defaultport
+
+    if not _is_hostname_valid(host):
+        raise InvalidAPIEndpointAddress(addr)
+    try:
+        port = int(port)
+    except ValueError:
+        raise InvalidAPIEndpointAddress(addr)
+
+    return host, port
+
+
+def _is_hostname_valid(host):
+    if "/" in host:
+        return False
+    if ":" in host:
+        return False
+    return True
+
+
+class ConnInfo(namedtuple("ConnInfo", "host port path uuid cacert timeout")):
+    """Holds all info related to an API connection."""
+
+    TIMEOUT = 20  # seconds
+    PORT = DEFAULT_PORT
+    API_ENDPOINT = "/api"
+    API_CLIENT = None
+
+    def __new__(cls, host, port=None, path=None, uuid=None, cacert=None,
+                timeout=TIMEOUT):
+        """
+        @param host: the target host (or combined address).
+        @param port: the target port (defaults to 17070).
+        @param path: the target API URL endpoint (defaults to /api).
+        @param uuid: the UUID of the target model; if None then the
+            controller will be targeted.
+        @param cacert: the certificate to use (currently ignored).
+        @param timeout: the connection timeout (defaults to 20 seconds).
+        """
+        assert cls.API_CLIENT is not None
+        if path is None:
+            path = cls.API_ENDPOINT
+        elif not path.startswith("/"):
+            path = "/" + path
+        host, port = _normalize_address(host, port, cls.PORT)
+        if timeout != 0:
+            timeout = int(timeout) if timeout else None
+        return super(ConnInfo, cls).__new__(
+            cls, host, port, path, uuid, cacert, timeout)
+
+    @property
+    def schema(self):
+        """The URL schema (e.g. https, wss for websockets)."""
+        return "wss" if self.path == self.API_ENDPOINT else "https"
+
+    @property
+    def address(self):
+        """The combined address string for the host and port."""
+        return "{}:{}".format(self.host, self.port)
+
+    @property
+    def get_protocol_factory(self):
+        """The twisted protocol factory class to use."""
+        if self.path == self.API_ENDPOINT:
+            return APIClientFactory
+        else:
+            raise NotImplementedError
+
+    @property
+    def get_ssl_context_factory(self):
+        """The twisted SSL context factory class to use."""
+        return ClientContextFactory  # TODO: verify certificate
+
+    @property
+    def get_client(self):
+        """The API client class to use."""
+        if self.path == self.API_ENDPOINT:
+            return self.API_CLIENT
+        else:
+            raise NotImplementedError
+
+    def get_url(self, **args):
+        """Return the URL for this info.
+
+        If args are provided then they are converted to a query.
+        """
+        url = self._get_url(args)
+        return url.geturl()
+
+    def _get_url(self, args):
+        if not self.uuid:
+            path = self.path
+        else:
+            path = "/model/" + self.uuid + self.path
+        query = urllib.urlencode(args)
+        url = urlparse.ParseResult(
+            self.schema, self.address, path, "", query, "")
+        return url
+
+    def get_endpoint(self, reactor, args=None, sslfactory=None):
+        """Return the twisted endpoing to use.
+
+        If args are provided then they are used to build the URL.
+        """
+        sslfactory = sslfactory or self.get_ssl_context_factory()
+        url = self.get_url(**args or {})
+        if self.path == self.API_ENDPOINT:
+            endpoint = WebSocketsEndpoint(
+                reactor, url, sslContextFactory=sslfactory,
+                timeout=self.timeout)
+        else:
+            raise NotImplementedError
+        return endpoint
+
+
+class Juju2ConnInfo(ConnInfo):
+    """A ConnInfo specific to Juju 2.x"""
+
+    @property
+    def API_CLIENT(self):
+        return Juju2APIClient
+
+
+class Juju1ConnInfo(ConnInfo):
+    """A ConnInfo specific to Juju 1.x"""
+
+    def __new__(cls, *args, **kwargs):
+        self = super(Juju1ConnInfo, cls).__new__(cls, *args, **kwargs)
+        if self.path != self.API_ENDPOINT:
+            raise RuntimeError("not supported under Juju 1.X")
+        return self
+
+    @property
+    def API_CLIENT(self):
+        return Juju1APIClient
+
+    def get_url(self, **args):
+        """Return the URL for this info.
+
+        If args are provided then they are converted to a query.
+        """
+        url = self._get_url(args)
+        url = url._replace(path="/")
+        return url.geturl()
+
+
+def connect(info, protocolfactory=None, get_client=None, reactor=None,
+            **kwargs):
+    """Connect to the Juju controller for API requests.
+
+    @return: A deferred that will callback with a connected APIClient
+        if we could connect, or errback with the relevant error.
+    """
+    protocolfactory = protocolfactory or info.get_protocol_factory()
+    get_client = get_client or info.get_client
+    endpoint = info.get_endpoint(reactor=reactor, **kwargs)
+    deferred = endpoint.connect(protocolfactory)
+    deferred.addCallback(lambda protocol: get_client(protocol, info, reactor))
+    return deferred
+
 
 class Endpoint(object):
     """A Juju API endpoint."""
 
-    defaultPort = 17070
+    defaultPort = DEFAULT_PORT
     factoryClass = APIClientFactory  # For testing
 
     def __init__(self, reactor, addr, clientClass, caCert=None,
@@ -63,8 +243,12 @@ class Endpoint(object):
         self._reactor = reactor
         self.addr = addr
         self.uuid = uuid
-        self._caCert = caCert
         self.clientClass = clientClass
+
+        ConnInfo = Juju2ConnInfo
+        if clientClass is Juju1APIClient:
+            ConnInfo = Juju1ConnInfo
+        self._info = ConnInfo(addr, None, "/api", uuid, caCert)
 
     def connect(self):
         """Connect to the API state server, with a timeout of 20s.
@@ -72,46 +256,127 @@ class Endpoint(object):
         @return: A deferred that will callback with a connected APIClient
             if we could connect, or errback with the relevant error.
         """
-        uri = self._get_uri(self.addr)
+        args = None
         factory = self.factoryClass()
-        contextFactory = ClientContextFactory()  # TODO: verify certificate
-        endpoint = WebSocketsEndpoint(
-            self._reactor, uri, sslContextFactory=contextFactory, timeout=20)
-        deferred = endpoint.connect(factory)
-        return deferred.addCallback(
-            lambda protocol: self.clientClass(protocol))
+        deferred = connect(
+            self._info, factory, self.clientClass, args=args,
+            reactor=self._reactor)
+        return deferred
 
     def _get_uri(self, addr):
-        """Return the API URI for the address.
-
-        Raise an InvalidAPIEndpointAddress exception if the specified
-        address is not valid.
-        """
-        parts = addr.split(":")
-        host = parts[0]
-        if "/" in host:
-            raise InvalidAPIEndpointAddress(addr)
-
-        if len(parts) == 1:
-            port = self.defaultPort
-        elif len(parts) == 2:
-            port = parts[1]
-        else:
-            raise InvalidAPIEndpointAddress(addr)
-
-        try:
-            port = int(port)
-        except ValueError:
-            raise InvalidAPIEndpointAddress(addr)
-        uri = "wss://%s:%d/" % (host, port)
+        ConnInfo = Juju2ConnInfo
         if self.clientClass is Juju1APIClient:
-            return uri
-        if self.uuid:
-            uri += "model/" + self.uuid + "/api"
-        return uri
+            ConnInfo = Juju1ConnInfo
+        info = ConnInfo(addr, uuid=self.uuid)
+        return info.get_url()
 
 
-class Juju2APIClient(object):
+class APIClient(object):
+    """The common API client functionality and state."""
+
+    _API_FACADE_VERSIONS = {}
+    _LOOKUP_PARAMETERS = {}
+    _SKIP_CONVERSION = []
+
+    def __init__(self, protocol, info=None, reactor=None):
+        """
+        @param protocol: A connected JujuProtocol instance.
+        @type protocol: JujuProtocol
+        """
+        self._protocol = protocol
+        self._info = info
+        self._reactor = reactor
+        self._agent = Agent(reactor)
+
+    def close(self):
+        """Close the connection with the API server."""
+        self._protocol.transport.loseConnection()
+        return self._protocol.disconnected
+
+    def _send_http_request(self, method, path, content_type, body, args=None):
+        info = self._info._replace(path=path)
+        uri = info.get_url(**args or {})
+        headers = Headers({
+            'Content-Type': [content_type],
+            })
+        body = FileBodyProducer(body)
+        deferred = self._agent.request(method, uri, headers, body)
+        return deferred
+
+    def _sendRequest(self, entityType, request, entityId=None, params=None):
+        """Return a deferred sendRequest with the proper facade_version."""
+        converted_params = self._convertParamKeys(params)
+        facade_version = None
+        if entityType in self._API_FACADE_VERSIONS:
+            facade_version = (
+                self._API_FACADE_VERSIONS[entityType].get(request))
+        return self._protocol.sendRequest(
+            entityType, request, entityId=entityId, params=converted_params,
+            facade_version=facade_version)
+
+    def _getCamelCaseParam(self, param):
+        """Return the unaltered param value for juju-2.0.
+
+        Juju-2.0 uses almost exclusively lowercase, hyphenated parameters.
+        """
+        return param
+
+    def _getParam(self, param):
+        """Lookup the appropriate parameter to use in API calls."""
+        try:
+            return self._LOOKUP_PARAMETERS[param]
+        except KeyError:
+            return self._getCamelCaseParam(param)
+
+    def _convertParamKeys(self, params):
+        """Convert parameter keys for compatibility with the API version."""
+        if not params:
+            return {}
+        if isinstance(params, str) or isinstance(params, unicode):
+            return params
+        converted_params = {}
+        for key, value in params.items():
+            if isinstance(value, list):
+                value = [self._convertParamKeys(item) for item in value]
+            elif (isinstance(value, dict) and
+                  key not in self._SKIP_CONVERSION):
+                value = self._convertParamKeys(value)
+            converted_params[self._getParam(key)] = value
+        return converted_params
+
+    def _getPlacementParam(self, scope, directive):
+        """Return placement parameter for Juju 2.0."""
+        if not any([scope, directive]):
+            return {}
+        if scope is None:
+            scope = MACHINE_SCOPE
+        return {"placement": [{"scope": scope,
+                               "directive": directive}]}
+
+    def _isUsableEndpoint(self, endpoint):
+        """Whether the given address is a usable state server endpoint.
+
+        We require the address to be a non-local IPv4 address. Alternatively,
+        we consider the endpoint usable if it's a fake-juju one.
+        """
+        # XXX workaround until lp:1597372 gives us consistency in juju2beta10
+        scope = endpoint.get("Scope") or endpoint.get("scope")
+        type_ = endpoint.get("Type") or endpoint.get("type")
+
+        network = endpoint.get(self._getParam("space-name"))
+        if scope != "local-machine" and type_ == "ipv4":
+            return True
+        # This is not a non-local IPv4 address, let's check if it's a
+        # fake-juju one instead.
+        return network == "dummy-provider-network" and type_ == "hostname"
+
+    def _parseErrorResults(self, response):
+        """Raise an exception if the response has any errors in it."""
+        for result in response["results"]:
+            _handle_api_error(result)
+
+
+class Juju2APIClient(APIClient):
     """Client for the Juju 2.0 API.
 
     Each method of this class will perform the relevant Juju 2.0 API request
@@ -156,13 +421,6 @@ class Juju2APIClient(object):
     }
     # Skip parameter conversion for any values below these keys
     _SKIP_CONVERSION = ["Options", "Pairs", "parameters", "Config"]
-
-    def __init__(self, protocol):
-        """
-        @param protocol: A connected JujuProtocol instance.
-        @type protocol: JujuProtocol
-        """
-        self._protocol = protocol
 
     def login(self, username, password):
         """Authenticate using the given credentials.
@@ -288,56 +546,6 @@ class Juju2APIClient(object):
             self._api_application_facade, "AddRelation", params=params)
         return deferred.addCallback(lambda _: None)
 
-    def _sendRequest(self, entityType, request, entityId=None, params=None):
-        """Return a deferred sendRequest with the proper facade_version."""
-        converted_params = self._convertParamKeys(params)
-        facade_version = None
-        if entityType in self._API_FACADE_VERSIONS:
-            facade_version = (
-                self._API_FACADE_VERSIONS[entityType].get(request))
-        return self._protocol.sendRequest(
-            entityType, request, entityId=entityId, params=converted_params,
-            facade_version=facade_version)
-
-    def _getCamelCaseParam(self, param):
-        """Return the unaltered param value for juju-2.0.
-
-        Juju-2.0 uses almost exclusively lowercase, hyphenated parameters.
-        """
-        return param
-
-    def _getParam(self, param):
-        """Lookup the appropriate parameter to use in API calls."""
-        try:
-            return self._LOOKUP_PARAMETERS[param]
-        except KeyError:
-            return self._getCamelCaseParam(param)
-
-    def _convertParamKeys(self, params):
-        """Convert parameter keys for compatibility with the API version."""
-        if not params:
-            return {}
-        if isinstance(params, str) or isinstance(params, unicode):
-            return params
-        converted_params = {}
-        for key, value in params.items():
-            if isinstance(value, list):
-                value = [self._convertParamKeys(item) for item in value]
-            elif (isinstance(value, dict) and
-                  key not in self._SKIP_CONVERSION):
-                value = self._convertParamKeys(value)
-            converted_params[self._getParam(key)] = value
-        return converted_params
-
-    def _getPlacementParam(self, scope, directive):
-        """Return placement parameter for Juju 2.0."""
-        if not any([scope, directive]):
-            return {}
-        if scope is None:
-            scope = MACHINE_SCOPE
-        return {"placement": [{"scope": scope,
-                               "directive": directive}]}
-
     def _getServiceDeployParams(self, serviceName, charmURL, scope=None,
                                 directive=None, config=None):
         """Return a dictionary of service deploy request parameters.
@@ -405,6 +613,22 @@ class Juju2APIClient(object):
         params = {"url": charmURL}
         deferred = self._sendRequest("Client", "AddCharm", params=params)
         return deferred.addCallback(self._parseAddCharm)
+
+    def upload_charm(self, charmurl, charm):
+        """Return the charm ID after uploading to the controller.
+
+        @param charmurl: The charm URL to use for the charm.
+        @param charm: A Charm containing the charm's info and data.
+        """
+        body = charm.open_as_zip_file()
+        args = {"series": charmurl.series,
+                "schema": charmurl.schema,
+                "revision": charmurl.revision,
+                }
+        deferred = self._send_http_request("POST", "/charms", "application/zip", body, args)
+        deferred.addCallback(handle_response)
+        deferred.addCallback(self._parseUploadCharm)
+        return deferred
 
     def addUnit(self, serviceName, scope, directive):
         """Add a unit to a Juju service.
@@ -504,11 +728,6 @@ class Juju2APIClient(object):
         deferred.addCallback(self._parseEnqueueActions)
         return deferred.addCallback(self._parseSingleAction)
 
-    def close(self):
-        """Close the connection with the API server."""
-        self._protocol.transport.loseConnection()
-        return self._protocol.disconnected
-
     def _parseAddCharm(self, response):
         """Parse the AddCharm API response for errors."""
         error = response.get("Error")  # XXX Watch for param renames
@@ -530,23 +749,6 @@ class Juju2APIClient(object):
                                     endpoint[self._getParam("port")]))
 
         return APIInfo(endpoints, uuid)
-
-    def _isUsableEndpoint(self, endpoint):
-        """Whether the given address is a usable state server endpoint.
-
-        We require the address to be a non-local IPv4 address. Alternatively,
-        we consider the endpoint usable if it's a fake-juju one.
-        """
-        # XXX workaround until lp:1597372 gives us consistency in juju2beta10
-        scope = endpoint.get("Scope") or endpoint.get("scope")
-        type_ = endpoint.get("Type") or endpoint.get("type")
-
-        network = endpoint.get(self._getParam("space-name"))
-        if scope != "local-machine" and type_ == "ipv4":
-            return True
-        # This is not a non-local IPv4 address, let's check if it's a
-        # fake-juju one instead.
-        return network == "dummy-provider-network" and type_ == "hostname"
 
     def _parseModelInfo(self, response):
         """Parse the response of a modelInfo request."""
@@ -723,6 +925,13 @@ class Juju2APIClient(object):
             constraints=response.get(self._getParam("constraints")),
             config=response.get(self._getParam("config")))
 
+    def _parseUploadCharm(self, response):
+        # We ignore "files".
+        try:
+            return response["charm-url"]
+        except KeyError:
+            raise APIRequestError("malformed result {}".format(result), "")
+
     def _parseAddMachines(self, response):
         """Parse the response of a L{addMachines} request."""
         return response[
@@ -761,11 +970,6 @@ class Juju2APIClient(object):
             action_tag = result["action"]["tag"]
             action_ids.append(action_tag.replace("action-", ""))
         return action_ids
-
-    def _parseErrorResults(self, response):
-        """Raise an exception if the response has any errors in it."""
-        for result in response["results"]:
-            _handle_api_error(result)
 
 
 class Juju1APIClient(Juju2APIClient):
@@ -851,6 +1055,9 @@ class Juju1APIClient(Juju2APIClient):
             serviceName, charmURL, scope, directive, config)
         deferred = self._sendRequest("Client", "ServiceDeploy", params=params)
         return deferred.addCallback(lambda _: None)  # No data in the response
+
+    def upload_charm(self, charmurl, charm):
+        raise RuntimeError("not supported under Juju 1.X")
 
     def addUnit(self, serviceName, scope, directive):
         """Add a unit to a Juju service in Juju 1.X.
