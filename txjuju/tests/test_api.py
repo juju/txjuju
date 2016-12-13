@@ -1248,7 +1248,9 @@ class Juju2APIClientTest(TestCase):
             ]})
         err = self.failureResultOf(deferred)
         self.assertIsInstance(err.value, APIRequestError)
-        self.assertEqual("charm \"cs:precise/ceph-18\" not found", err.value.error)
+        self.assertEqual(
+            "charm \"cs:precise/ceph-18\" not found",
+            err.value.error)
         self.assertEqual("not found", err.value.code)
 
     def test_addMachine(self):
@@ -1452,7 +1454,8 @@ class Juju2APIClientTest(TestCase):
             StatusInfo("active", "a-ok"),
             delta.info.agent_status)
         self.assertEqual(
-            StatusInfo("maintenance", "installing..."), delta.info.workload_status)
+            StatusInfo("maintenance", "installing..."),
+            delta.info.workload_status)
         self.assertEqual("maintenance", delta.info.status)
         self.assertEqual("installing...", delta.info.statusInfo)
 
