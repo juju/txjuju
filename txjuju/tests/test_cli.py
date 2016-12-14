@@ -590,7 +590,8 @@ spam:
         self.cli.bootstrap(spec, "0", "bootstrap.yaml", True, True, True)
 
         self.assert_called(
-            "bootstrap -v --to 0 --auto-upgrade --config bootstrap.yaml lxd spam")
+            "bootstrap -v --to 0 --auto-upgrade --config"
+            " bootstrap.yaml lxd spam")
 
     def test_bootstrap_minimal(self):
         spec = BootstrapSpec("spam", "lxd")
@@ -1089,6 +1090,38 @@ class Juju2CLITest(TwistedTestCase, MockerTestCase):
         with open(os.path.join(tempdir, "all-machines.log")) as logfile:
             logdata = logfile.read()
         self.assertEqual(expected, logdata)
+
+    @inlineCallbacks
+    def test_set_model_hook_autoretry_enable_retries(self):
+        """
+        Juju2Cli.set_model_hook_autoretry enables the model-config setting
+        when True.
+        """
+        juju_executable = self.makeFile("#!/bin/sh\n" "echo -n $@")
+        os.chmod(juju_executable, 0755)
+        self.cli.juju_binary_path = juju_executable
+
+        expected = "model-config -m {} automatically-retry-hooks=True".format(
+            self.model_name)
+        out, _ = yield self.cli.set_model_hook_autoretry(
+            self.model_name, True)
+        self.assertEqual(expected, out)
+
+    @inlineCallbacks
+    def test_set_model_hook_autoretry_disable_retries(self):
+        """
+        Juju2Cli.set_model_hook_autoretry disables the model-config setting
+        when False.
+        """
+        juju_executable = self.makeFile("#!/bin/sh\n" "echo -n $@")
+        os.chmod(juju_executable, 0755)
+        self.cli.juju_binary_path = juju_executable
+
+        expected = "model-config -m {} automatically-retry-hooks=False".format(
+            self.model_name)
+        out, _ = yield self.cli.set_model_hook_autoretry(
+            self.model_name, False)
+        self.assertEqual(expected, out)
 
     @inlineCallbacks
     def test_get_all_logs(self):

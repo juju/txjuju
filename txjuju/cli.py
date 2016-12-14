@@ -417,6 +417,18 @@ class Juju2CLI(object):
 
         return self._run(status_command)
 
+    def set_model_hook_autoretry(self, modelname, autoretry=True):
+        """Enable or disable juju's automatic hook retry functionality.
+
+        @param: modelname: The name of the model to operate in.
+        @param autoretry: Boolean. When True, enable automatic retries on
+            hook failures.
+        """
+        cmd = [
+            "model-config", "-m", modelname,
+            "automatically-retry-hooks={}".format(autoretry)]
+        return self._run(cmd)
+
     @inlineCallbacks
     def get_all_logs(self, modelname, destdir, filename):
         """Copy all of the model's logs into the given file."""
