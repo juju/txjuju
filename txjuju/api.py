@@ -196,7 +196,7 @@ class Juju2APIClient(object):
         params = {"config": {keyname: value}}
         deferred = self._sendRequest("ModelConfig", "ModelSet", params=params)
         return deferred.addCallback(self._parseSetModelConfigResult)
-        
+
     def cloud(self, cloudtag):
         """Return information about the model's cloud.
 

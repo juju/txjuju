@@ -957,17 +957,18 @@ class Juju2APIClientTest(TestCase):
         deferred = self.client.setModelConfig(
             "automatically-retry-hooks", "invalid-value")
         self.backend.response({"results": [{"error": {
-            u"message": "automatically-retry-hooks: expected bool, got string(\"invalid-value\")",
+            u"message": "automatically-retry-hooks: expected bool,"
+            u" got string(\"invalid-value\")",
             u"code": "not found",
             }}]})
 
         err = self.failureResultOf(deferred)
         self.assertIsInstance(err.value, APIRequestError)
         self.assertEqual(
-            "automatically-retry-hooks: expected bool, got string(\"invalid-value\")",
+            "automatically-retry-hooks: expected bool,"
+            " got string(\"invalid-value\")",
             err.value.error)
         self.assertEqual("not found", err.value.code)
-
 
     def test_cloud_full(self):
         """
@@ -1283,7 +1284,9 @@ class Juju2APIClientTest(TestCase):
             ]})
         err = self.failureResultOf(deferred)
         self.assertIsInstance(err.value, APIRequestError)
-        self.assertEqual("charm \"cs:precise/ceph-18\" not found", err.value.error)
+        self.assertEqual(
+            "charm \"cs:precise/ceph-18\" not found",
+            err.value.error)
         self.assertEqual("not found", err.value.code)
 
     def test_addMachine(self):
@@ -1487,7 +1490,8 @@ class Juju2APIClientTest(TestCase):
             StatusInfo("active", "a-ok"),
             delta.info.agent_status)
         self.assertEqual(
-            StatusInfo("maintenance", "installing..."), delta.info.workload_status)
+            StatusInfo("maintenance", "installing..."),
+            delta.info.workload_status)
         self.assertEqual("maintenance", delta.info.status)
         self.assertEqual("installing...", delta.info.statusInfo)
 
