@@ -4,6 +4,10 @@ PYTHON = python2
 test:
 	$(PYTHON) -m unittest discover -t $(shell pwd) -s $(shell pwd)/txjuju
 
+.PHONY: integration-test
+integration-test:
+	$(PYTHON) -m unittest discover -t $(shell pwd) -s $(shell pwd)/tests
+
 .PHONY: coverage
 coverage:
 	# sudo apt-get install python-coverage
