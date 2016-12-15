@@ -191,11 +191,11 @@ class Juju2APIClient(object):
                                      params=params)
         return deferred.addCallback(self._parseModelInfo)
 
-    def setModelConfig(self, key_name, value):
+    def setModelConfig(self, keyname, value):
         """Set model config values."""
         params = {"config": {keyname: value}}
         deferred = self._sendRequest("ModelConfig", "ModelSet", params=params)
-        return deferred.addCallback(self._parseErrorResults)
+        return deferred.addCallback(self._parseSetModelConfigResult)
         
     def cloud(self, cloudtag):
         """Return information about the model's cloud.
@@ -555,6 +555,11 @@ class Juju2APIClient(object):
         # This is not a non-local IPv4 address, let's check if it's a
         # fake-juju one instead.
         return network == "dummy-provider-network" and type_ == "hostname"
+
+    def _parseSetModelConfigResult(self, response):
+        """Parse setModelConfig response for any errors."""
+        if response.get("results"):
+            self._parseErrorResults(response)
 
     def _parseModelInfo(self, response):
         """Parse the response of a modelInfo request."""
