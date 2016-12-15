@@ -150,6 +150,8 @@ class Juju2APIClient(object):
             "Cloud": 1},
         "ModelManager": {
             "ModelInfo": 2},
+        "ModelConfig": {
+            "ModelSet": 1},
     }
     _LOOKUP_PARAMETERS = {
         "application-name": "application",
@@ -189,6 +191,12 @@ class Juju2APIClient(object):
                                      params=params)
         return deferred.addCallback(self._parseModelInfo)
 
+    def setModelConfig(self, key_name, value):
+        """Set model config values."""
+        params = {"config": {keyname: value}}
+        deferred = self._sendRequest("ModelConfig", "ModelSet", params=params)
+        return deferred.addCallback(self._parseErrorResults)
+        
     def cloud(self, cloudtag):
         """Return information about the model's cloud.
 
