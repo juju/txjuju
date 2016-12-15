@@ -936,7 +936,7 @@ class Juju2APIClientTest(TestCase):
 
     def test_setModelConfig_good_result(self):
         """
-        The setModelConfig method sends an 'ModelConfig' request and
+        The setModelConfig method sends a 'ModelConfig' request and
         returns a deferred that will callback with a ModelInfo instance.
         """
         deferred = self.client.setModelConfig(
