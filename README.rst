@@ -1,6 +1,9 @@
 ***********************************
 txjuju: a twisted-based Juju client
 ***********************************
+.. image:: https://travis-ci.org/juju/txjuju.svg?branch=master
+    :target: https://travis-ci.org/juju/txjuju
+    :alt: Build Status
 
 ``txjuju`` provides `twisted <https://twistedmatrix.com/>`_-based tools
 for interacting with `Juju <http://www.ubuntu.com/cloud/juju>`_.  This

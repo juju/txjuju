@@ -934,6 +934,42 @@ class Juju2APIClientTest(TestCase):
         self.assertEqual("malformed result {}", err.value.error)
         self.assertEqual("", err.value.code)
 
+    def test_setModelConfig_good_result(self):
+        """
+        The setModelConfig method sends a 'ModelConfig' request and
+        returns a deferred that will callback with a ModelInfo instance.
+        """
+        deferred = self.client.setModelConfig(
+            "automatically-retry-hooks", False)
+        params = {"config": {"automatically-retry-hooks": False}}
+        self.assertEqual("ModelConfig", self.backend.lastType)
+        self.assertEqual("ModelSet", self.backend.lastRequest)
+        self.assertEqual(1, self.backend.lastVersion)
+        self.assertEqual(params, self.backend.lastParams)
+        self.backend.response({})
+        self.assertIsNone(self.successResultOf(deferred))
+
+    def test_setModelConfig_error_result(self):
+        """
+        The setModelConfig method fails with an APIRequestError if the result
+        contains an error.
+        """
+        deferred = self.client.setModelConfig(
+            "automatically-retry-hooks", "invalid-value")
+        self.backend.response({"results": [{"error": {
+            u"message": "automatically-retry-hooks: expected bool,"
+            u" got string(\"invalid-value\")",
+            u"code": "not found",
+            }}]})
+
+        err = self.failureResultOf(deferred)
+        self.assertIsInstance(err.value, APIRequestError)
+        self.assertEqual(
+            "automatically-retry-hooks: expected bool,"
+            " got string(\"invalid-value\")",
+            err.value.error)
+        self.assertEqual("not found", err.value.code)
+
     def test_cloud_full(self):
         """
         The cloud method sends a 'Cloud' request and
@@ -1248,7 +1284,9 @@ class Juju2APIClientTest(TestCase):
             ]})
         err = self.failureResultOf(deferred)
         self.assertIsInstance(err.value, APIRequestError)
-        self.assertEqual("charm \"cs:precise/ceph-18\" not found", err.value.error)
+        self.assertEqual(
+            "charm \"cs:precise/ceph-18\" not found",
+            err.value.error)
         self.assertEqual("not found", err.value.code)
 
     def test_addMachine(self):
@@ -1452,7 +1490,8 @@ class Juju2APIClientTest(TestCase):
             StatusInfo("active", "a-ok"),
             delta.info.agent_status)
         self.assertEqual(
-            StatusInfo("maintenance", "installing..."), delta.info.workload_status)
+            StatusInfo("maintenance", "installing..."),
+            delta.info.workload_status)
         self.assertEqual("maintenance", delta.info.status)
         self.assertEqual("installing...", delta.info.statusInfo)
 
