@@ -105,7 +105,7 @@ class ExecutableTests(unittest.TestCase):
 
         self.assertEqual(args, ["/usr/local/bin/my-exe", "x", "-y", "z"])
 
-    def test_run(self):
+    def test_run_exists(self):
         """
         Executable.run() runs the command and returns nothing.
         """
@@ -119,7 +119,17 @@ class ExecutableTests(unittest.TestCase):
         self.assertTrue(out.startswith("x -y z\n"))
         self.assertIn("SPAM=eggs\n", out)
 
-    def test_run_out(self):
+    def test_run_executable_does_not_exist(self):
+        """
+        Executable.run() fails if the executable does not exist.
+        """
+        filename = self._resolve_executable("does-not-exist")
+        exe = Executable(filename)
+
+        with self.assertRaises(ExecutableNotFoundError):
+            exe.run()
+
+    def test_run_out_exists(self):
         """
         Executable.run_out() runs the command and returns stdout.
         """
@@ -130,3 +140,13 @@ class ExecutableTests(unittest.TestCase):
 
         self.assertTrue(out.startswith("x -y z\n"))
         self.assertIn("SPAM=eggs\n", out)
+
+    def test_run_executable_does_not_exist(self):
+        """
+        Executable.run_out() fails if the executable does not exist.
+        """
+        filename = self._resolve_executable("does-not-exist")
+        exe = Executable(filename)
+
+        with self.assertRaises(ExecutableNotFoundError):
+            exe.run_out()

@@ -73,16 +73,32 @@ class Executable(namedtuple("Executable", "filename envvars")):
 
         The provided kwargs are those that subprocess.* supports.
         """
-        args = self.resolve_args(*args)
-        subprocess.check_call(args, env=self.envvars, **kwargs)
+        call = subprocess.check_call
+        self._run(call, *args, **kwargs)
 
     def run_out(self, *args, **kwargs):
         """Return the output from running the executable with the given args.
 
         The provided kwargs are those that subprocess.* supports.
         """
+        call = subprocess.check_output
+        return self._run(call, *args, **kwargs)
+
+    def _run(self, call, *args, **kwargs):
         args = self.resolve_args(*args)
-        return subprocess.check_output(args, env=self.envvars, **kwargs)
+        envvars = self.envvars
+        try:
+            return call(args, env=envvars, **kwargs)
+        except Exception:
+            path = envvars["PATH"] if envvars else None
+            try:
+                found = find_executable(self.filename, path)
+            except Exception:
+                pass  # Defer to the original exception.
+            else:
+                if found == None:
+                    raise ExecutableNotFoundError(self.filename, path)
+            raise
 
 
 class UnicodeYamlLoader(yaml.Loader):
