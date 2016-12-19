@@ -35,7 +35,7 @@ def get_executable(filename, version_cli, cfgdir, envvars=None):
     envvars = dict(envvars)
     envvars[version_cli.CFGDIR_ENVVAR] = cfgdir
 
-    return _utils.Executable(filename, envvars)
+    return _utils.Executable.find(filename, envvars)
 
 
 class BootstrapSpec(object):
