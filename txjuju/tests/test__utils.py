@@ -33,27 +33,28 @@ class ExecutableTests(unittest.TestCase):
         """
         Executable() works when provided all arguments.
         """
-        exe = Executable("my-exe", {"SPAM": "eggs"})
+        exe = Executable("/usr/local/bin/my-exe", {"SPAM": "eggs"})
 
-        self.assertEqual(exe.filename, "my-exe")
+        self.assertEqual(exe.filename, "/usr/local/bin/my-exe")
         self.assertEqual(exe.envvars, {"SPAM": "eggs"})
 
     def test_minimal(self):
         """
         Executable() works with minimal arguments.
         """
-        exe = Executable("my-exe")
+        exe = Executable("/usr/local/bin/my-exe")
 
-        self.assertEqual(exe.filename, "my-exe")
+        self.assertEqual(exe.filename, "/usr/local/bin/my-exe")
         self.assertIsNone(exe.envvars)
 
     def test_conversion(self):
         """
         Executable() converts the args to str.
         """
-        exe = Executable(u"my-exe", [(u"SPAM", u"eggs"), ("ham", "")])
+        exe = Executable(
+            u"/usr/local/bin/my-exe", [(u"SPAM", u"eggs"), ("ham", "")])
 
-        self.assertEqual(exe.filename, "my-exe")
+        self.assertEqual(exe.filename, "/usr/local/bin/my-exe")
         self.assertEqual(exe.envvars, {"SPAM": "eggs"})
 
     def test_missing_filename(self):
@@ -69,7 +70,7 @@ class ExecutableTests(unittest.TestCase):
         """
         Executable.envvars gives a copy of the originally provided env vars.
         """
-        exe = Executable("my-exe", {"SPAM": "eggs"})
+        exe = Executable("/usr/local/bin/my-exe", {"SPAM": "eggs"})
         exe.envvars["SPAM"] = "ham"
 
         self.assertEqual(exe.envvars, {"SPAM": "eggs"})
@@ -79,10 +80,10 @@ class ExecutableTests(unittest.TestCase):
         Executable.resolve_args() returns the args list that may
         be passed to subprocess.*().
         """
-        exe = Executable("my-exe", {"SPAM": "eggs"})
+        exe = Executable("/usr/local/bin/my-exe", {"SPAM": "eggs"})
         args = exe.resolve_args("x", "-y", "z")
 
-        self.assertEqual(args, ["my-exe", "x", "-y", "z"])
+        self.assertEqual(args, ["/usr/local/bin/my-exe", "x", "-y", "z"])
 
     def test_run(self):
         """

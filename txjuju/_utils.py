@@ -1,5 +1,6 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
+import os.path
 import subprocess
 from collections import namedtuple
 
@@ -25,6 +26,8 @@ class Executable(namedtuple("Executable", "filename envvars")):
     def __init__(self, *args, **kwargs):
         if not self.filename:
             raise ValueError("missing filename")
+        if not os.path.isabs(self.filename):
+            raise ValueError("filename must be an absolute path")
 
     @property
     def envvars(self):
