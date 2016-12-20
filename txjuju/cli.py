@@ -17,6 +17,29 @@ from . import config, _utils, _juju1, _juju2
 from .errors import CLIError
 
 
+def _find_best_juju(supported):
+    for juju in supported:
+        try:
+            _utils.Executable.find(juju)
+        except _utils.ExecutableNotFoundError:
+            continue
+        else:
+            return juju
+    else:
+        return supported[0]
+
+
+JUJU1 = _find_best_juju([
+        "juju-1",
+        "juju-1.25",
+        ])
+JUJU2 = _find_best_juju([
+        "juju-2",
+        # (lp:1650644) For now we must accommodate varying binary paths.
+        "juju-2.0",  # the latest production release
+        ])
+
+
 def get_executable(filename, version_cli, cfgdir, envvars=None):
     """Return the Executable for the given juju binary.
 
@@ -213,7 +236,7 @@ class Juju1CLI(object):
 
     # Allow override for testing purposes, normal use should not need
     # to change this.
-    juju_binary_path = "juju"
+    juju_binary_path = JUJU1
 
     def __init__(self, juju_home):
         self.juju_home = juju_home
@@ -332,7 +355,7 @@ class Juju2CLI(object):
 
     # Allow override for testing purposes, normal use should not need
     # to change this.
-    juju_binary_path = "juju-2.0"
+    juju_binary_path = JUJU2
 
     def __init__(self, juju_data):
         """The JUJU_DATA path, previously referred as JUJU_HOME."""
