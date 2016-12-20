@@ -1,14 +1,41 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
+import os
 import os.path
 import subprocess
 from collections import namedtuple
+from distutils.spawn import find_executable
 
 import yaml
 
 
+class ExecutableNotFoundError(Exception):
+    """An executable was not found."""
+
+    def __init__(self, executable, path):
+        msg = "executable {!r} not found".format(executable)
+        super(ExecutableNotFoundError, self).__init__(msg)
+        self.executable = executable
+        self.path = path
+
+
 class Executable(namedtuple("Executable", "filename envvars")):
     """A single executable."""
+
+    @classmethod
+    def find(cls, name, envvars=None):
+        """Return the named executable if it exists on the path.
+
+        If it doesn't exist then ExecutableNotFoundError is raised.
+        """
+        if not name:
+            return cls(name, envvars) # This will trigger an exception.
+
+        path = (envvars or os.environ).get("PATH")
+        found = find_executable(name, path)
+        if found == None:
+            raise ExecutableNotFoundError(name, path)
+        return cls(found, envvars)
 
     def __new__(cls, filename, envvars=None):
         """

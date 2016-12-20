@@ -6,7 +6,7 @@ import shutil
 import tempfile
 import unittest
 
-from txjuju._utils import Executable
+from txjuju._utils import ExecutableNotFoundError, Executable
 
 
 class ExecutableTests(unittest.TestCase):
@@ -20,14 +20,34 @@ class ExecutableTests(unittest.TestCase):
             shutil.rmtree(self.dirname)
         super(ExecutableTests, self).tearDown()
 
-    def _write_executable(self, filename):
+    def _resolve_executable(self, filename):
         if self.dirname is None:
             self.dirname = tempfile.mkdtemp(prefix="txjuju-test-")
-        filename = os.path.join(self.dirname, filename)
+        return os.path.join(self.dirname, filename)
+
+    def _write_executable(self, filename):
+        filename = self._resolve_executable(filename)
         with open(filename, "w") as file:
             file.write("#!/bin/bash\necho $@\nenv")
         os.chmod(filename, 0o755)
         return filename
+
+    def test_find_exists(self):
+        """
+        Executable.find() works if the executable exists.
+        """
+        exe = Executable.find("python2")
+
+        self.assertEqual(exe.filename, "/usr/bin/python2")
+        self.assertIsNone(exe.envvars)
+
+    def test_find_does_not_exist(self):
+        """
+        Executable.find() fails if the executable does not exist.
+        """
+        filename = self._resolve_executable("does-not-exist")
+        with self.assertRaises(ExecutableNotFoundError):
+            Executable.find(filename)
 
     def test_full(self):
         """
