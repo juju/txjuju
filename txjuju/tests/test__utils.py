@@ -38,7 +38,7 @@ class ExecutableTests(unittest.TestCase):
         """
         exe = Executable.find("python2")
 
-        self.assertEqual(exe.filename, "/usr/bin/python2")
+        self.assertTrue(exe.filename.endswith("/bin/python2"))
         self.assertIsNone(exe.envvars)
 
     def test_find_does_not_exist(self):
