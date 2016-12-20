@@ -159,6 +159,8 @@ class APIInfo(namedtuple("APIInfo", "endpoints user password model_uuid")):
 class CLI(object):
     """The client CLI for some Juju version."""
 
+    # TODO: Add from_filename() that uses --version to determine the version.
+
     @classmethod
     def from_version(cls, filename, version, cfgdir, envvars=None):
         """Return a new CLI for the given binary and version.
