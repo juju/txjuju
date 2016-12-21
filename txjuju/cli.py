@@ -36,7 +36,8 @@ JUJU1 = _find_best_juju([
 JUJU2 = _find_best_juju([
         "juju-2",
         "juju-2.0",  # the latest production release
-        # (lp:1650644) For now we must accommodate varying binary paths.
+        # TODO: (lp:1650644, lp:1646223)
+        #  For now we must accommodate varying binary paths.
         # TODO: make sure txjuju works with Juju 2.1.
         "juju-2.1",  # the latest development release
         ])
