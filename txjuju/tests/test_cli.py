@@ -26,8 +26,11 @@ class GetExecutableTest(unittest.TestCase):
 
     def setUp(self):
         self.dirname = tempfile.mkdtemp(prefix="txjuju-test-")
+        self.os_env_orig = os.environ.copy()
 
     def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.os_env_orig)
         shutil.rmtree(self.dirname)
         super(GetExecutableTest, self).tearDown()
 
@@ -62,6 +65,17 @@ class GetExecutableTest(unittest.TestCase):
         self.assertEqual(exe.filename, filename)
         self.assertEqual(exe.envvars["JUJU_HOME"], "/tmp")
         self.assertNotEqual(exe.envvars, {"JUJU_HOME": "/tmp"})
+
+    def test_relative_filename(self):
+        """
+        get_executable() searches for the executable if the provided
+        filename is relative.
+        """
+        filename = self._write_executable("spam")
+        os.environ["PATH"] = self.dirname
+        exe = get_executable("spam", self.CLI, "/tmp")
+
+        self.assertEqual(exe.filename, filename)
 
     def test_missing_filename(self):
         """
