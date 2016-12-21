@@ -14,8 +14,11 @@ class ExecutableTests(unittest.TestCase):
     def setUp(self):
         super(ExecutableTests, self).setUp()
         self.dirname = None
+        self.os_env_orig = os.environ.copy()
 
     def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.os_env_orig)
         if self.dirname is not None:
             shutil.rmtree(self.dirname)
         super(ExecutableTests, self).tearDown()
@@ -32,22 +35,128 @@ class ExecutableTests(unittest.TestCase):
         os.chmod(filename, 0o755)
         return filename
 
-    def test_find_exists(self):
+    def test_find_on_os_environs_PATH(self):
         """
-        Executable.find() works if the executable exists.
+        Executable.find() succeeds if the executable exists and
+        is located under os.environ["PATH"]
         """
-        exe = Executable.find("python2")
+        filename = self._write_executable("script")
+        os.environ["PATH"] = os.path.dirname(filename)
+        exe = Executable.find("script")
 
-        self.assertTrue(exe.filename.endswith("/bin/python2"))
+        self.assertEqual(exe.filename, filename)
         self.assertIsNone(exe.envvars)
 
     def test_find_does_not_exist(self):
         """
-        Executable.find() fails if the executable does not exist.
+        Executable.find() fails if the executable does not exist,
+        even if an absolute filename is provided (an absolute filename
+        makes $PATH irrelevant).
         """
         filename = self._resolve_executable("does-not-exist")
+
         with self.assertRaises(ExecutableNotFoundError):
             Executable.find(filename)
+
+    def test_find_not_on_PATH_relative(self):
+        """
+        Executable.find() fails if the executable is not under $PATH.
+        """
+        filename = self._write_executable("script")
+        os.environ["PATH"] = "/not/the/dir/we/want"
+
+        with self.assertRaises(ExecutableNotFoundError):
+            Executable.find("script")
+
+    def test_find_not_on_PATH_absolute(self):
+        """
+        Executable.find() succeeds if unfindable but absolute filename.
+        """
+        filename = self._write_executable("script")
+        os.environ["PATH"] = "/dir/does/not/exist"
+        exe = Executable.find(filename)
+
+        self.assertEqual(exe.filename, filename)
+
+    def test_find_on_envvars_PATH(self):
+        """
+        Executable.find() succeeds if envvars has $PATH set and the
+        executable is locatd under it.  os.environ["PATH"] is ignored.
+        """
+        filename = self._write_executable("script")
+        os.environ["PATH"] = "/not/the/dir/we/want"
+        envvars = {
+                "PATH": self.dirname,
+                "SPAM": "eggs",
+                }
+        exe = Executable.find("script", envvars)
+
+        self.assertEqual(exe.filename, filename)
+        self.assertEqual(exe.envvars, envvars)
+
+    def test_find_not_on_envvars_PATH(self):
+        """
+        Executable.find() fails for a relative filename if envvars
+        is provided and has $PATH set, but the executable is not
+        located under it, even if it *is* findable under
+        os.environ["PATH"].
+        """
+        filename = self._write_executable("script")
+        os.environ["PATH"] = os.path.dirname(filename)
+        envvars = {
+                "PATH": "/not/the/dir/we/want",
+                "SPAM": "eggs",
+                }
+
+        with self.assertRaises(ExecutableNotFoundError):
+            Executable.find("script", envvars)
+
+    def test_find_no_envvars_PATH_but_on_os_environs_PATH(self):
+        """
+        Executable.find() succeeds if the provided envvars does not
+        have $PATH set, but os.environ does and the executable is
+        located under it.
+        """
+        filename = self._write_executable("script")
+        os.environ["PATH"] = os.path.dirname(filename)
+        envvars = {
+                "SPAM": "eggs",
+                }
+        exe = Executable.find("script", envvars)
+
+        self.assertEqual(exe.filename, filename)
+        self.assertEqual(exe.envvars, envvars)
+
+    def test_find_no_envvars_PATH_not_on_os_environs_PATH_relative(self):
+        """
+        Executable.find() fails if the filename is relative and
+        the executable is not found under $PATH in envvars nor in
+        os.environ.
+        """
+        filename = self._write_executable("script")
+        os.environ["PATH"] = "/not/the/dir/we/want"
+        envvars = {
+                "SPAM": "eggs",
+                }
+
+        with self.assertRaises(ExecutableNotFoundError):
+            Executable.find("script", envvars)
+
+    def test_find_no_envvars_PATH_not_on_os_environs_PATH_absolute(self):
+        """
+        Executable.find() succeeds if the filename is absolute, even
+        if envars is provided without $PATH and the executable is not
+        located under os.environ["PATH"].
+        """
+        filename = self._write_executable("script")
+        os.environ["PATH"] = "/not/the/dir/we/want"
+        envvars = {
+                "SPAM": "eggs",
+                }
+        exe = Executable.find(filename, envvars)
+
+        self.assertEqual(exe.filename, filename)
+        self.assertEqual(exe.envvars, envvars)
 
     def test_full(self):
         """
@@ -85,6 +194,13 @@ class ExecutableTests(unittest.TestCase):
             Executable(None)
         with self.assertRaises(ValueError):
             Executable("")
+
+    def test_relative_filename(self):
+        """
+        Executable() fails if filename is None or empty.
+        """
+        with self.assertRaises(ValueError):
+            Executable("x/y/z")
 
     def test_envvars(self):
         """
