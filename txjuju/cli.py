@@ -30,10 +30,12 @@ def _find_best_juju(supported):
 
 
 JUJU1 = _find_best_juju([
+        # The first entry is also used as the default.
         "juju-1",
         "juju-1.25",
         ])
 JUJU2 = _find_best_juju([
+        # The first entry is also used as the default.
         "juju-2",
         "juju-2.0",  # the latest production release
         # TODO: (lp:1650644, lp:1646223)
