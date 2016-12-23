@@ -1,13 +1,41 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
+import os
+import os.path
 import subprocess
 from collections import namedtuple
+from distutils.spawn import find_executable
 
 import yaml
 
 
+class ExecutableNotFoundError(Exception):
+    """An executable was not found."""
+
+    def __init__(self, executable, path):
+        msg = "executable {!r} not found".format(executable)
+        super(ExecutableNotFoundError, self).__init__(msg)
+        self.executable = executable
+        self.path = path
+
+
 class Executable(namedtuple("Executable", "filename envvars")):
     """A single executable."""
+
+    @classmethod
+    def find(cls, name, envvars=None):
+        """Return the named executable if it exists on the path.
+
+        If it doesn't exist then ExecutableNotFoundError is raised.
+        """
+        if not name:
+            return cls(name, envvars) # This will trigger an exception.
+
+        path = (envvars or os.environ).get("PATH")
+        found = find_executable(name, path)
+        if found == None:
+            raise ExecutableNotFoundError(name, path)
+        return cls(found, envvars)
 
     def __new__(cls, filename, envvars=None):
         """
@@ -25,6 +53,8 @@ class Executable(namedtuple("Executable", "filename envvars")):
     def __init__(self, *args, **kwargs):
         if not self.filename:
             raise ValueError("missing filename")
+        if not os.path.isabs(self.filename):
+            raise ValueError("filename must be an absolute path")
 
     @property
     def envvars(self):
@@ -43,16 +73,32 @@ class Executable(namedtuple("Executable", "filename envvars")):
 
         The provided kwargs are those that subprocess.* supports.
         """
-        args = self.resolve_args(*args)
-        subprocess.check_call(args, env=self.envvars, **kwargs)
+        call = subprocess.check_call
+        self._run(call, *args, **kwargs)
 
     def run_out(self, *args, **kwargs):
         """Return the output from running the executable with the given args.
 
         The provided kwargs are those that subprocess.* supports.
         """
+        call = subprocess.check_output
+        return self._run(call, *args, **kwargs)
+
+    def _run(self, call, *args, **kwargs):
         args = self.resolve_args(*args)
-        return subprocess.check_output(args, env=self.envvars, **kwargs)
+        envvars = self.envvars
+        try:
+            return call(args, env=envvars, **kwargs)
+        except Exception:
+            path = envvars["PATH"] if envvars else None
+            try:
+                found = find_executable(self.filename, path)
+            except Exception:
+                pass  # Defer to the original exception.
+            else:
+                if found == None:
+                    raise ExecutableNotFoundError(self.filename, path)
+            raise
 
 
 class UnicodeYamlLoader(yaml.Loader):

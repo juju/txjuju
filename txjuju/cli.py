@@ -17,6 +17,34 @@ from . import config, _utils, _juju1, _juju2
 from .errors import CLIError
 
 
+def _find_best_juju(supported):
+    for juju in supported:
+        try:
+            _utils.Executable.find(juju)
+        except _utils.ExecutableNotFoundError:
+            continue
+        else:
+            return juju
+    else:
+        return supported[0]
+
+
+JUJU1 = _find_best_juju([
+        # The first entry is also used as the default.
+        "juju-1",
+        "juju-1.25",
+        ])
+JUJU2 = _find_best_juju([
+        # The first entry is also used as the default.
+        "juju-2",
+        "juju-2.0",  # the latest production release
+        # TODO: (lp:1650644, lp:1646223)
+        #  For now we must accommodate varying binary paths.
+        # TODO: make sure txjuju works with Juju 2.1.
+        "juju-2.1",  # the latest development release
+        ])
+
+
 def get_executable(filename, version_cli, cfgdir, envvars=None):
     """Return the Executable for the given juju binary.
 
@@ -35,7 +63,7 @@ def get_executable(filename, version_cli, cfgdir, envvars=None):
     envvars = dict(envvars)
     envvars[version_cli.CFGDIR_ENVVAR] = cfgdir
 
-    return _utils.Executable(filename, envvars)
+    return _utils.Executable.find(filename, envvars)
 
 
 class BootstrapSpec(object):
@@ -134,6 +162,8 @@ class APIInfo(namedtuple("APIInfo", "endpoints user password model_uuid")):
 class CLI(object):
     """The client CLI for some Juju version."""
 
+    # TODO: Add from_filename() that uses --version to determine the version.
+
     @classmethod
     def from_version(cls, filename, version, cfgdir, envvars=None):
         """Return a new CLI for the given binary and version.
@@ -213,7 +243,7 @@ class Juju1CLI(object):
 
     # Allow override for testing purposes, normal use should not need
     # to change this.
-    juju_binary_path = "juju"
+    juju_binary_path = JUJU1
 
     def __init__(self, juju_home):
         self.juju_home = juju_home
@@ -332,7 +362,7 @@ class Juju2CLI(object):
 
     # Allow override for testing purposes, normal use should not need
     # to change this.
-    juju_binary_path = "juju-2.0"
+    juju_binary_path = JUJU2
 
     def __init__(self, juju_data):
         """The JUJU_DATA path, previously referred as JUJU_HOME."""

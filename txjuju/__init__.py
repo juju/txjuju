@@ -17,8 +17,8 @@ __all__ = [
 __version__ = "0.9.0a1"
 
 
-JUJU1 = "juju"
-JUJU2 = "juju-2.0"
+JUJU1 = "juju-1"
+JUJU2 = "juju-2"
 
 
 def get_cli_class(release=JUJU1):

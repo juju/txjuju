@@ -1,10 +1,12 @@
 # Copyright 2016 Canonical Limited.  All rights reserved.
 
 from collections import namedtuple
+import importlib
 import json
 import os
 import os.path
 import shutil
+import sys
 import tempfile
 import unittest
 
@@ -19,30 +21,124 @@ from txjuju.errors import CLIError
 from txjuju.testing import TwistedTestCase, StubExecutable, write_script
 
 
+class DefaultJujuTest(unittest.TestCase):
+
+    def setUp(self):
+        self.dirname = tempfile.mkdtemp(prefix="txjuju-test-")
+        self.os_env_orig = os.environ.copy()
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.os_env_orig)
+        shutil.rmtree(self.dirname)
+        super(DefaultJujuTest, self).tearDown()
+
+    def _write_juju(self, *names):
+        for name in names:
+            filename = os.path.join(self.dirname, name)
+            with open(filename, "w") as file:
+                file.write("#!/bin/bash\necho $@")
+            os.chmod(filename, 0o755)
+
+    def _import_txjuju_cli_fresh(self):
+        origmodule = sys.modules.pop("txjuju.cli")
+        try:
+            return importlib.import_module("txjuju.cli")
+        finally:
+            sys.modules["txjuju.cli"] = origmodule
+
+    def test_JUJU1_none_found(self):
+        self._write_juju("juju", "juju-2")
+        os.environ["PATH"] = self.dirname
+        climod = self._import_txjuju_cli_fresh()
+
+        self.assertEqual(climod.JUJU1, "juju-1")
+
+    def test_JUJU1_found_one(self):
+        self._write_juju("juju", "juju-2")
+        os.environ["PATH"] = self.dirname
+        # Add executables in the reverse order of what's in cli.py.
+        for juju in ("juju-1.25", "juju-1"):
+            self._write_juju(juju)
+            climod = self._import_txjuju_cli_fresh()
+
+            self.assertEqual(climod.JUJU1, juju)
+
+    def test_JUJU2_none_found(self):
+        self._write_juju("juju", "juju-1")
+        os.environ["PATH"] = self.dirname
+        climod = self._import_txjuju_cli_fresh()
+
+        self.assertEqual(climod.JUJU2, "juju-2")
+
+    def test_JUJU2_found_one(self):
+        self._write_juju("juju", "juju-1")
+        os.environ["PATH"] = self.dirname
+        # Add executables in the reverse order of what's in cli.py.
+        for juju in ("juju-2.1", "juju-2.0", "juju-2"):
+            self._write_juju(juju)
+            climod = self._import_txjuju_cli_fresh()
+
+            self.assertEqual(climod.JUJU2, juju)
+
+
 class GetExecutableTest(unittest.TestCase):
 
     class CLI(object):
         CFGDIR_ENVVAR = "JUJU_HOME"
 
+    def setUp(self):
+        self.dirname = tempfile.mkdtemp(prefix="txjuju-test-")
+        self.os_env_orig = os.environ.copy()
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.os_env_orig)
+        shutil.rmtree(self.dirname)
+        super(GetExecutableTest, self).tearDown()
+
+    def _resolve_executable(self, filename):
+        return os.path.join(self.dirname, filename)
+
+    def _write_executable(self, filename):
+        filename = self._resolve_executable(filename)
+        with open(filename, "w") as file:
+            file.write("#!/bin/bash\necho $@\nenv")
+        os.chmod(filename, 0o755)
+        return filename
+
     def test_full(self):
         """
         get_executable() works when all args are provided.
         """
-        exe = get_executable("spam", self.CLI, "/tmp", {"SPAM": "eggs"})
+        filename = self._write_executable("spam")
+        exe = get_executable(filename, self.CLI, "/tmp", {"SPAM": "eggs"})
 
         self.assertEqual(
             exe,
-            _utils.Executable("spam", {"SPAM": "eggs", "JUJU_HOME": "/tmp"}))
+            _utils.Executable(filename, {"SPAM": "eggs", "JUJU_HOME": "/tmp"}))
 
     def test_minimal(self):
         """
         get_executable() works when given minimal args.
         """
-        exe = get_executable("spam", self.CLI, "/tmp")
+        filename = self._write_executable("spam")
+        exe = get_executable(filename, self.CLI, "/tmp")
 
-        self.assertEqual(exe.filename, "spam")
+        self.assertEqual(exe.filename, filename)
         self.assertEqual(exe.envvars["JUJU_HOME"], "/tmp")
         self.assertNotEqual(exe.envvars, {"JUJU_HOME": "/tmp"})
+
+    def test_relative_filename(self):
+        """
+        get_executable() searches for the executable if the provided
+        filename is relative.
+        """
+        filename = self._write_executable("spam")
+        os.environ["PATH"] = self.dirname
+        exe = get_executable("spam", self.CLI, "/tmp")
+
+        self.assertEqual(exe.filename, filename)
 
     def test_missing_filename(self):
         """
@@ -57,17 +153,19 @@ class GetExecutableTest(unittest.TestCase):
         """
         get_executable() fails if version_cli is None.
         """
+        filename = self._write_executable("spam")
         with self.assertRaises(ValueError):
-            get_executable("spam", None, "/tmp")
+            get_executable(filename, None, "/tmp")
 
     def test_missing_cfgdir(self):
         """
         get_executable() fails if cfgdir is None or empty.
         """
+        filename = self._write_executable("spam")
         with self.assertRaises(ValueError):
-            get_executable("spam", self.CLI, None)
+            get_executable(filename, self.CLI, None)
         with self.assertRaises(ValueError):
-            get_executable("spam", self.CLI, "")
+            get_executable(filename, self.CLI, "")
 
 
 class BootstrapSpecTest(unittest.TestCase):
@@ -280,15 +378,39 @@ class CLITests(unittest.TestCase):
 
     def setUp(self):
         super(CLITests, self).setUp()
+        self.dirname = None
         self.calls = []
         self.exe = StubExecutable(self.calls)
         self.version_cli = StubJujuXCLI(self.calls)
+
+    def tearDown(self):
+        if self.dirname is not None:
+            shutil.rmtree(self.dirname)
+        super(CLITests, self).tearDown()
+
+    def _resolve_executable(self, filename):
+        if self.dirname is None:
+            self.dirname = tempfile.mkdtemp(prefix="txjuju-test-")
+        return os.path.join(self.dirname, filename)
+
+    def _write_executable(self, filename):
+        filename = self._resolve_executable(filename)
+        with open(filename, "w") as file:
+            file.write("#!/bin/bash\necho $@\nenv")
+        os.chmod(filename, 0o755)
+        return filename
 
     def test_from_version_missing_filename(self):
         with self.assertRaises(ValueError):
             CLI.from_version(None, "1.25.6", "/tmp")
         with self.assertRaises(ValueError):
             CLI.from_version("", "1.25.6", "/tmp")
+
+    def test_from_version_executable_not_found(self):
+        filename = self._resolve_executable("does-not-exist")
+
+        with self.assertRaises(_utils.ExecutableNotFoundError):
+            CLI.from_version(filename, "1.25.6", "/tmp")
 
     def test_from_version_missing_version(self):
         with self.assertRaises(ValueError):
@@ -306,12 +428,15 @@ class CLITests(unittest.TestCase):
         version_cli = object()
         with self.assertRaises(ValueError):
             CLI(None, version_cli)
+        with self.assertRaises(ValueError):
+            CLI("", version_cli)
 
     def test_missing_version_cli(self):
         class cli(object):
             CFGDIR_ENVVAR = "JUJU_HOME"
 
-        exe = get_executable("juju", cli, "/tmp")
+        filename = self._write_executable("juju")
+        exe = get_executable(filename, cli, "/tmp")
         with self.assertRaises(ValueError):
             CLI(exe, None)
 
