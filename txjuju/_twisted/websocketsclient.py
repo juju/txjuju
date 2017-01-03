@@ -336,6 +336,7 @@ class WebSocketsClientFactory(Factory):
     """
     protocol = WebSocketsClientProtocol
     handshake = None
+    noisy = False
 
     def setHandshake(self, handshake):
         """Set the L{Handshake} to use when sending the handshake request."""
