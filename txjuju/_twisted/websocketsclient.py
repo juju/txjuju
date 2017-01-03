@@ -30,7 +30,7 @@ from twisted.web.error import SchemeNotSupported
 
 from .websockets import (
     WebSocketsProtocol, CONTROLS, _parseFrames, _makeFrame, _makeAccept,
-    WebSocketsProtocolWrapper, WebSocketsTransport)
+    WebSocketsProtocolWrapper, WebSocketsTransport, STATUSES)
 
 
 # default service ports for WebSocket URI schemas
@@ -54,6 +54,10 @@ class _FrameParser(WebSocketsProtocol):
         # Verbatim copy of the parent class logic, except that we don't need
         # a mask for _parseFrames if we are a client. Unfortunately there's
         # no hook to customize just this bit.
+        #
+        # ... nor do we want the verbose logging, connectionMade is
+        # overriden so with logs here, we'd only see the closing of
+        # the connection, and no opening.
         needMask = not self.isClient
         for opcode, data, fin in _parseFrames(self._buffer, needMask=needMask):
             self._receiver.frameReceived(opcode, data, fin)
@@ -63,7 +67,8 @@ class _FrameParser(WebSocketsProtocol):
                 msgFormat = "Closing connection: %(code)r"
                 if reason:
                     msgFormat += " (%(reason)r)"
-                log.msg(format=msgFormat, reason=reason, code=code)
+                if code is not STATUSES.NORMAL:
+                    log.msg(format=msgFormat, reason=reason, code=code)
 
                 # Close the connection.
                 self.transport.loseConnection()
