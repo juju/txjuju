@@ -63,13 +63,7 @@ class _FrameParser(WebSocketsProtocol):
             self._receiver.frameReceived(opcode, data, fin)
             if opcode == CONTROLS.CLOSE:
                 # The other side wants us to close.
-                code, reason = data
-                msgFormat = "Closing connection: %(code)r"
-                if reason:
-                    msgFormat += " (%(reason)r)"
-                if code is not STATUSES.NORMAL:
-                    log.msg(format=msgFormat, reason=reason, code=code)
-
+                log_closed_connection(data)
                 # Close the connection.
                 self.transport.loseConnection()
                 return
@@ -78,6 +72,16 @@ class _FrameParser(WebSocketsProtocol):
                 # 5.5.3 PONGs must contain the data that was sent with the
                 # provoking PING.
                 self.transport.write(_makeFrame(data, CONTROLS.PONG, True))
+
+
+def log_closed_connection(data):
+    """Log the reason for closing the connection, if significant."""
+    code, reason = data
+    msgFormat = "Closing connection: %(code)r"
+    if reason:
+        msgFormat += " (%(reason)r)"
+    if code is not STATUSES.NORMAL:
+        log.msg(format=msgFormat, reason=reason, code=code)
 
 
 class _FrameSender(WebSocketsTransport):
