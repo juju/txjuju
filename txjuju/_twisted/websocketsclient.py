@@ -30,7 +30,7 @@ from twisted.web.error import SchemeNotSupported
 
 from .websockets import (
     WebSocketsProtocol, CONTROLS, _parseFrames, _makeFrame, _makeAccept,
-    WebSocketsProtocolWrapper, WebSocketsTransport)
+    WebSocketsProtocolWrapper, WebSocketsTransport, STATUSES)
 
 
 # default service ports for WebSocket URI schemas
@@ -54,17 +54,16 @@ class _FrameParser(WebSocketsProtocol):
         # Verbatim copy of the parent class logic, except that we don't need
         # a mask for _parseFrames if we are a client. Unfortunately there's
         # no hook to customize just this bit.
+        #
+        # ... nor do we want the verbose logging, connectionMade is
+        # overriden so with logs here, we'd only see the closing of
+        # the connection, and no opening.
         needMask = not self.isClient
         for opcode, data, fin in _parseFrames(self._buffer, needMask=needMask):
             self._receiver.frameReceived(opcode, data, fin)
             if opcode == CONTROLS.CLOSE:
                 # The other side wants us to close.
-                code, reason = data
-                msgFormat = "Closing connection: %(code)r"
-                if reason:
-                    msgFormat += " (%(reason)r)"
-                log.msg(format=msgFormat, reason=reason, code=code)
-
+                log_closed_connection(data)
                 # Close the connection.
                 self.transport.loseConnection()
                 return
@@ -73,6 +72,16 @@ class _FrameParser(WebSocketsProtocol):
                 # 5.5.3 PONGs must contain the data that was sent with the
                 # provoking PING.
                 self.transport.write(_makeFrame(data, CONTROLS.PONG, True))
+
+
+def log_closed_connection(data):
+    """Log the reason for closing the connection, if significant."""
+    code, reason = data
+    msgFormat = "Closing connection: %(code)r"
+    if reason:
+        msgFormat += " (%(reason)r)"
+    if code is not STATUSES.NORMAL:
+        log.msg(format=msgFormat, reason=reason, code=code)
 
 
 class _FrameSender(WebSocketsTransport):
@@ -336,6 +345,7 @@ class WebSocketsClientFactory(Factory):
     """
     protocol = WebSocketsClientProtocol
     handshake = None
+    noisy = False
 
     def setHandshake(self, handshake):
         """Set the L{Handshake} to use when sending the handshake request."""
