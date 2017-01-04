@@ -22,6 +22,8 @@ class LogClosedConnectionTest(unittest.TestCase):
         super(LogClosedConnectionTest, self).setUp()
         self.log_events = []
         globalLogPublisher.addObserver(self.log_events.append)
+        self.addCleanup(
+            globalLogPublisher.removeObserver, self.log_events.append)
 
     def test_no_log_for_normal(self):
         """There is no log emitted for normal connection closing."""
