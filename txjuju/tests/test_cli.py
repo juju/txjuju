@@ -1170,7 +1170,25 @@ class Juju2CLITest(TwistedTestCase, MockerTestCase):
         self.cli.juju_binary_path = juju_executable
 
         out, _ = yield self.cli.destroy_environment(self.model_name, True)
-        self.assertEqual("kill-controller --yes", out)
+        expected = "kill-controller --yes {model}".format(
+            model=self.model_name)
+        self.assertEqual(expected, out)
+
+    @inlineCallbacks
+    def test_juju_destroy_environment_forced_with_timeout(self):
+        """
+        Juju2CLI.destroy_environment with the force flags calls the
+        kill-controller with timout option if specified.
+        """
+        juju_executable = self.makeFile("#!/bin/sh\necho -n $@")
+        os.chmod(juju_executable, 0o755)
+        self.cli.juju_binary_path = juju_executable
+
+        out, _ = yield self.cli.destroy_environment(
+            self.model_name, force=True, force_timeout="60s")
+        expected = "kill-controller --yes --timeout=60s {model}".format(
+            model=self.model_name)
+        self.assertEqual(expected, out)
 
     @inlineCallbacks
     def test_get_juju_status(self):
