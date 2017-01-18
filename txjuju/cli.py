@@ -395,19 +395,25 @@ class Juju2CLI(object):
         deferred.addCallback(self._parse_yaml_output)
         return deferred
 
-    def destroy_environment(self, juju_controller_name, force=False):
+    def destroy_environment(self, juju_controller_name, force=False,
+                            force_timeout=None):
         """Run juju destroy-controller against juju_model_name.
 
-        The force parameter disappeared with juju2 and was replaced by
-        kill-controller command.
+        The force parameter will instead call kill-controller and fall back
+        to removing using the cloud provider (e.g. MaaS) after a timeout,
+        which is "5m0s" by default.
+
+        @param juju_controller_name: The name of the controller to destroy.
+        @param force: If true, will attemt to destroy using kill-controller.
+        @param force_timeout: Delay to force remove.
         """
         if force:
-            # RELEASE_BLOCKER kill-controller may go away juju-2.0 goes out
-            # of beta so we should use whatever gets in the juju2 release.
             cmd = ["kill-controller", "--yes"]
+            if force_timeout:
+                cmd.append("--timeout={}".format(force_timeout))
         else:
-            cmd = ["destroy-controller", "--yes", "--destroy-all-models",
-                   juju_controller_name]
+            cmd = ["destroy-controller", "--yes", "--destroy-all-models"]
+        cmd.append(juju_controller_name)
         return self._run(cmd)
 
     @inlineCallbacks
