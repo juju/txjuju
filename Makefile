@@ -6,7 +6,7 @@ test:
 
 .PHONY: integration-test
 integration-test:
-	$(PYTHON) -m unittest discover -t $(shell pwd) -s $(shell pwd)/tests
+	$(PYTHON) -m testtools.run discover -t . -s tests
 
 .PHONY: coverage
 coverage:

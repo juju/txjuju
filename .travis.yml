@@ -12,7 +12,11 @@ before_install:
   - sudo add-apt-repository ppa:fake-juju/master -y
   - sudo apt-get update -q
   - sudo apt-get install -y fake-juju
+env:
+  global:
+    - JUJU_MONGOD=/usr/bin/mongod
 install:
- - pip install twisted fixtures PyYAML testtools pyOpenSSL mocker
+ - pip install twisted==16.0.0 fixtures PyYAML testtools pyOpenSSL mocker fakejuju git+https://github.com/testing-cabal/testresources.git#egg=testresources
 script:
  - make test
+ - make integration-test

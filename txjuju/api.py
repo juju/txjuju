@@ -111,7 +111,7 @@ class Endpoint(object):
         return uri
 
 
-class Juju2APIClient(object):
+class JujuAPIClient(object):
     """Client for the Juju 2.0 API.
 
     Each method of this class will perform the relevant Juju 2.0 API request
@@ -781,7 +781,7 @@ class Juju2APIClient(object):
             _handle_api_error(result)
 
 
-class Juju1APIClient(Juju2APIClient):
+class Juju1APIClient(JujuAPIClient):
     """Client for the Juju 1.X API.
 
     XXX bug #1558600 duplication to be removed with "juju-2.0" feature flag.
@@ -995,3 +995,7 @@ def _handle_api_error(result):
     except KeyError:
         raise APIRequestError("malformed result {}".format(result), "")
     raise APIRequestError(msg, code)
+
+
+# For backward-compatibility
+Juju2APIClient = JujuAPIClient
