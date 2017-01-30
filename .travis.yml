@@ -1,8 +1,17 @@
-dist: trusty
 sudo: true
 language: python
 python:
  - "2.7"
+addons:
+  apt:
+    sources:
+      - mongodb-3.0-precise
+    packages:
+      - mongodb-org-server
+before_install:
+  - sudo add-apt-repository ppa:fake-juju/master -y
+  - sudo apt-get update -q
+  - sudo apt-get install -y fake-juju
 install:
  - pip install twisted fixtures PyYAML testtools pyOpenSSL mocker
 script:
