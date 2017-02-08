@@ -29,7 +29,7 @@ class JujuAPIClientIntegrationTest(TestCase, ResourcedTestCase):
         cli.execute("bootstrap", "foo", "bar")
         self.addCleanup(cli.execute, "destroy-controller", "-y", "bar")
 
-        addr = "localhost:%d" % (self.fakejuju.port - 1)
+        addr = self.fakejuju.address
         self.endpoint = Endpoint(reactor, addr, JujuAPIClient, uuid=MODEL_UUID)
         self.client = yield self.endpoint.connect()
 
